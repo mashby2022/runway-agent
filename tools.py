@@ -26,13 +26,16 @@ def get_channel_blueprint(channel_id: str) -> str:
     blueprints: dict[str, dict] = {
         "ch_runway_01": {
             "channel_id": "ch_runway_01",
-            "identity": "Couture Classics",
-            "strategy": "Rotate classics with modern favorites",
-            "target_demo": "18-35",
+            "identity": "Runway Inclusive",
+            "audience_primary": "Female / LGBT+",
+            "audience_secondary": "18-35",
+            "strategy": (
+                "Curating iconic female performances that define style "
+                "and subvert the status quo."
+            ),
             "description": (
-                "A curated FAST channel celebrating fashion, culture, and style "
-                "through iconic films and contemporary hits anchored by the "
-                "18-35 demographic."
+                "The premier destination for female-led cinema and "
+                "fashion-forward storytelling."
             ),
         }
     }
@@ -88,11 +91,17 @@ def get_current_schedule(channel_id: str, timestamp: str) -> dict:
 def lookup_content_metadata(content_id: str) -> dict:
     """Return full metadata for a catalog asset by its show_id.
 
+    Includes content_runtime_min (actual film length) and block_duration_min
+    (EPG slot size, rounded up to nearest 30-minute boundary). The gap between
+    the two is reserved for High-Fashion Ad Breaks and Exclusive Designer
+    Interviews.
+
     Args:
         content_id: The show identifier (e.g. 's0001').
 
     Returns:
-        The catalog entry dict, or an error dict if not found.
+        The catalog entry dict enriched with scheduling fields,
+        or an error dict if not found.
     """
     try:
         catalog: list[dict] = _load_json("data/catalog.json")
@@ -101,7 +110,13 @@ def lookup_content_metadata(content_id: str) -> dict:
 
     for item in catalog:
         if item.get("show_id") == content_id:
-            return item
+            result = dict(item)
+            runtime = result.get("runtime_min", 90)
+            block = ((runtime + 29) // 30) * 30
+            result["content_runtime_min"] = runtime
+            result["block_duration_min"] = block
+            result["interstitial_min"] = block - runtime
+            return result
 
     return {"error": f"Content '{content_id}' not found in catalog."}
 

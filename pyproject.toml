@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "runway-nat-plugin"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[project.entry-points."nat.components"]
+runway_tools = "runway_plugin"
+
+[tool.setuptools]
+py-modules = ["runway_plugin", "tools"]

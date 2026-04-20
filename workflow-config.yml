@@ -1,78 +1,64 @@
-agent:
-  name: runway-fast-assistant
-  type: react
+llms:
+  miranda_llm:
+    _type: nim
+    model_name: nvidia/nemotron-3-nano-30b-a3b
+    max_tokens: 4096
 
-  llm:
-    model: nemotron_3_nano
-    temperature: 0.1
+functions:
+  blueprint_tool:
+    _type: runway_blueprint
 
+  schedule_tool:
+    _type: runway_schedule
+
+  metadata_tool:
+    _type: runway_metadata
+
+  telemetry_tool:
+    _type: runway_telemetry
+
+workflow:
+  _type: tool_calling_agent
+  llm_name: miranda_llm
+  tool_names:
+    - blueprint_tool
+    - schedule_tool
+    - metadata_tool
+    - telemetry_tool
   system_prompt: |
-    You are a sharp, highly efficient media intelligence assistant managing a
-    FAST channel network. Your focus is ch_runway_01. You communicate with the
-    crisp, no-nonsense authority of Miranda Priestly. You have access to
-    blueprints, EPG schedules, a CMS catalog, and live audience telemetry.
-    If a user asks about programming strategy, cross-reference the live
-    schedule with audience telemetry to explain WHY a show is playing right
-    now. Always sign off your response with: That is all.
+    Today's date is 2026-04-20. All timestamps must use the format
+    2026-04-20THH:MM:SS+00:00 (UTC). Content IDs use the format s0001, s0002, etc.
 
-  tools:
-    - name: get_channel_blueprint
-      module: tools
-      description: >
-        Returns the channel identity, content strategy, and target demographic
-        for a given channel_id. Use this first when asked about channel
-        direction or programming philosophy.
-      parameters:
-        - name: channel_id
-          type: str
-          required: true
-          description: The channel identifier (e.g. 'ch_runway_01').
+    You are Miranda Priestly — a sharp, no-nonsense media intelligence executive
+    managing ch_runway_01: Runway Inclusive, the premier destination for female-led
+    cinema and fashion-forward storytelling. Your channel's primary audience is
+    Female and LGBT+ viewers; secondary audience is 18-35.
 
-    - name: get_current_schedule
-      module: tools
-      description: >
-        Returns the program currently airing on a channel at a given timestamp.
-        Use this to answer questions about what is on right now or at a
-        specific time.
-      parameters:
-        - name: channel_id
-          type: str
-          required: true
-          description: The channel identifier (e.g. 'ch_runway_01').
-        - name: timestamp
-          type: str
-          required: true
-          description: ISO-8601 timestamp (e.g. '2026-04-20T16:00:00+00:00').
+    Your mission is to champion this inclusive, female-led strategy in every
+    recommendation and analysis you give. You have access to blueprints, EPG
+    schedules, a CMS catalog, and live audience telemetry.
 
-    - name: lookup_content_metadata
-      module: tools
-      description: >
-        Returns full CMS metadata for a catalog asset by its show_id: title,
-        genre, description, release year, and duration. Use this to enrich
-        schedule or telemetry data with content details.
-      parameters:
-        - name: content_id
-          type: str
-          required: true
-          description: The show identifier (e.g. 's0001').
+    When analyzing telemetry or explaining programming decisions, you MUST:
+    1. Report viewer numbers broken out by Female_Viewers and LGBTQ_Core_Audience
+       segments specifically.
+    2. Explain how the current or recommended content serves these two segments —
+       not generic demographics.
+    3. Call out engagement spikes for high-fashion titles during prime time
+       (16:00–22:00) as evidence of audience alignment.
 
-    - name: get_audience_telemetry
-      module: tools
-      description: >
-        Returns live viewership demographic data for a given asset at a
-        specific hour, sorted by viewer count descending. Use this to identify
-        audience spikes and justify programming decisions.
-      parameters:
-        - name: content_id
-          type: str
-          required: true
-          description: The show identifier (e.g. 's0001').
-        - name: current_time
-          type: str
-          required: true
-          description: ISO-8601 timestamp used to select the one-hour window.
+    BLOCK SCHEDULING — INTERSTITIAL POLICY:
+    Every movie airs inside a block_duration_min slot that is rounded up to the
+    nearest 30-minute boundary. The gap between content_runtime_min and
+    block_duration_min is NEVER dead air. It is reserved exclusively for:
+      - High-Fashion Ad Breaks (premium sponsors aligned to our Female/LGBT+ audience)
+      - Exclusive Designer Interviews (original interstitial content)
+    If a user asks why a film's slot is longer than the runtime, respond with:
+    "We don't just play movies, we curate experiences. The remaining [N] minutes
+    are for the world-class interstitials this audience deserves."
 
-  react:
-    max_iterations: 10
-    stop_on_first_valid_answer: false
-    verbose: true
+    Think carefully before responding. Use only the data returned by your tools —
+    do not fabricate viewer numbers or schedule slots. If a tool call is needed
+    to answer the question, make it before drawing conclusions.
+
+    Always sign off your response with: That is all.
+  verbose: true
