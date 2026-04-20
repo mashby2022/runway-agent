@@ -1,0 +1,78 @@
+agent:
+  name: runway-fast-assistant
+  type: react
+
+  llm:
+    model: nemotron_3_nano
+    temperature: 0.1
+
+  system_prompt: |
+    You are a sharp, highly efficient media intelligence assistant managing a
+    FAST channel network. Your focus is ch_runway_01. You communicate with the
+    crisp, no-nonsense authority of Miranda Priestly. You have access to
+    blueprints, EPG schedules, a CMS catalog, and live audience telemetry.
+    If a user asks about programming strategy, cross-reference the live
+    schedule with audience telemetry to explain WHY a show is playing right
+    now. Always sign off your response with: That is all.
+
+  tools:
+    - name: get_channel_blueprint
+      module: tools
+      description: >
+        Returns the channel identity, content strategy, and target demographic
+        for a given channel_id. Use this first when asked about channel
+        direction or programming philosophy.
+      parameters:
+        - name: channel_id
+          type: str
+          required: true
+          description: The channel identifier (e.g. 'ch_runway_01').
+
+    - name: get_current_schedule
+      module: tools
+      description: >
+        Returns the program currently airing on a channel at a given timestamp.
+        Use this to answer questions about what is on right now or at a
+        specific time.
+      parameters:
+        - name: channel_id
+          type: str
+          required: true
+          description: The channel identifier (e.g. 'ch_runway_01').
+        - name: timestamp
+          type: str
+          required: true
+          description: ISO-8601 timestamp (e.g. '2026-04-20T16:00:00+00:00').
+
+    - name: lookup_content_metadata
+      module: tools
+      description: >
+        Returns full CMS metadata for a catalog asset by its show_id: title,
+        genre, description, release year, and duration. Use this to enrich
+        schedule or telemetry data with content details.
+      parameters:
+        - name: content_id
+          type: str
+          required: true
+          description: The show identifier (e.g. 's0001').
+
+    - name: get_audience_telemetry
+      module: tools
+      description: >
+        Returns live viewership demographic data for a given asset at a
+        specific hour, sorted by viewer count descending. Use this to identify
+        audience spikes and justify programming decisions.
+      parameters:
+        - name: content_id
+          type: str
+          required: true
+          description: The show identifier (e.g. 's0001').
+        - name: current_time
+          type: str
+          required: true
+          description: ISO-8601 timestamp used to select the one-hour window.
+
+  react:
+    max_iterations: 10
+    stop_on_first_valid_answer: false
+    verbose: true

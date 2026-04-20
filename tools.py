@@ -1,0 +1,156 @@
+"""
+FAST Channel Media Intelligence – Tool Functions
+Each function reads from pre-generated JSON files in data/.
+"""
+
+import json
+from datetime import datetime, timezone
+from typing import Any
+
+
+def _load_json(path: str) -> Any:
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def get_channel_blueprint(channel_id: str) -> str:
+    """Return the channel strategy blueprint for the given channel.
+
+    Args:
+        channel_id: The channel identifier (e.g. 'ch_runway_01').
+
+    Returns:
+        A JSON string containing identity, strategy, and target demographic.
+        Returns an error JSON string if the channel is not recognised.
+    """
+    blueprints: dict[str, dict] = {
+        "ch_runway_01": {
+            "channel_id": "ch_runway_01",
+            "identity": "Couture Classics",
+            "strategy": "Rotate classics with modern favorites",
+            "target_demo": "18-35",
+            "description": (
+                "A curated FAST channel celebrating fashion, culture, and style "
+                "through iconic films and contemporary hits anchored by the "
+                "18-35 demographic."
+            ),
+        }
+    }
+
+    blueprint = blueprints.get(channel_id)
+    if blueprint is None:
+        return json.dumps({"error": f"Channel '{channel_id}' not found."})
+
+    return json.dumps(blueprint, indent=2)
+
+
+def get_current_schedule(channel_id: str, timestamp: str) -> dict:
+    """Return the program airing on a channel at the given timestamp.
+
+    Args:
+        channel_id: The channel identifier to filter by.
+        timestamp:  ISO-8601 timestamp string (e.g. '2026-04-20T16:00:00+00:00').
+
+    Returns:
+        The matching schedule slot dict, or an error dict if nothing is found.
+    """
+    try:
+        slots: list[dict] = _load_json("data/schedule.json")
+    except FileNotFoundError:
+        return {"error": "data/schedule.json not found."}
+
+    try:
+        query_dt = datetime.fromisoformat(timestamp)
+        if query_dt.tzinfo is None:
+            query_dt = query_dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return {"error": f"Invalid timestamp format: '{timestamp}'."}
+
+    for slot in slots:
+        if slot.get("channel_id") != channel_id:
+            continue
+        try:
+            start = datetime.fromisoformat(slot["start"])
+            end   = datetime.fromisoformat(slot["end"])
+        except (KeyError, ValueError):
+            continue
+
+        if start <= query_dt < end:
+            return slot
+
+    return {
+        "error": (
+            f"No program found on '{channel_id}' at {timestamp}."
+        )
+    }
+
+
+def lookup_content_metadata(content_id: str) -> dict:
+    """Return full metadata for a catalog asset by its show_id.
+
+    Args:
+        content_id: The show identifier (e.g. 's0001').
+
+    Returns:
+        The catalog entry dict, or an error dict if not found.
+    """
+    try:
+        catalog: list[dict] = _load_json("data/catalog.json")
+    except FileNotFoundError:
+        return {"error": "data/catalog.json not found."}
+
+    for item in catalog:
+        if item.get("show_id") == content_id:
+            return item
+
+    return {"error": f"Content '{content_id}' not found in catalog."}
+
+
+def get_audience_telemetry(content_id: str, current_time: str) -> list[dict]:
+    """Return viewership demographic data for an asset at a given hour.
+
+    Matches telemetry records whose timestamp shares the same UTC date and hour
+    as *current_time*, across all demographics.
+
+    Args:
+        content_id:   The show identifier (e.g. 's0001').
+        current_time: ISO-8601 timestamp string used to select the time window.
+
+    Returns:
+        A list of telemetry record dicts for that asset and hour, sorted by
+        viewers descending. Returns a list with a single error dict on failure.
+    """
+    try:
+        records: list[dict] = _load_json("data/telemetry.json")
+    except FileNotFoundError:
+        return [{"error": "data/telemetry.json not found."}]
+
+    try:
+        query_dt = datetime.fromisoformat(current_time)
+        if query_dt.tzinfo is None:
+            query_dt = query_dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return [{"error": f"Invalid timestamp format: '{current_time}'."}]
+
+    matches = []
+    for rec in records:
+        if rec.get("show_id") != content_id:
+            continue
+        try:
+            rec_dt = datetime.fromisoformat(rec["timestamp"])
+        except (KeyError, ValueError):
+            continue
+        if rec_dt.date() == query_dt.date() and rec_dt.hour == query_dt.hour:
+            matches.append(rec)
+
+    if not matches:
+        return [
+            {
+                "error": (
+                    f"No telemetry for '{content_id}' at "
+                    f"{query_dt.strftime('%Y-%m-%d %H:00 UTC')}."
+                )
+            }
+        ]
+
+    return sorted(matches, key=lambda r: r.get("viewers", 0), reverse=True)
