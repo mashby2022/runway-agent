@@ -1,0 +1,16 @@
+# ── NAT framework ─────────────────────────────────────────────────────────────
+nvidia-nat[langchain]
+pydantic>=2.0
+requests
+
+# ── ML pipeline ───────────────────────────────────────────────────────────────
+scikit-learn>=1.4
+numpy>=1.26
+pandas>=2.0
+scipy>=1.13
+
+# ── GPU acceleration (RAPIDS) — installed separately on CUDA nodes ────────────
+# Run setup_brev.sh — it detects CUDA and installs the right cudf/cuml build.
+# Manual install on CUDA 12.x node:
+#   pip install --extra-index-url=https://pypi.nvidia.com \
+#       cudf-cu12==25.2.* cuml-cu12==25.2.*

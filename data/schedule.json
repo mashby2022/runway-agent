@@ -1,0 +1,92 @@
+[
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0001",
+    "title": "The Hunger Games",
+    "start": "2026-04-20T00:00:00+00:00",
+    "end": "2026-04-20T02:30:00+00:00",
+    "duration_min": 150,
+    "content_runtime_min": 142
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0002",
+    "title": "Wonder Woman",
+    "start": "2026-04-20T02:30:00+00:00",
+    "end": "2026-04-20T05:00:00+00:00",
+    "duration_min": 150,
+    "content_runtime_min": 141
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0003",
+    "title": "Arrival",
+    "start": "2026-04-20T05:00:00+00:00",
+    "end": "2026-04-20T07:00:00+00:00",
+    "duration_min": 120,
+    "content_runtime_min": 116
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0004",
+    "title": "The Hunger Games: Catching Fire",
+    "start": "2026-04-20T07:00:00+00:00",
+    "end": "2026-04-20T09:30:00+00:00",
+    "duration_min": 150,
+    "content_runtime_min": 146
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0005",
+    "title": "Zootopia",
+    "start": "2026-04-20T09:30:00+00:00",
+    "end": "2026-04-20T11:30:00+00:00",
+    "duration_min": 120,
+    "content_runtime_min": 109
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0006",
+    "title": "The Hunger Games: Mockingjay - Part 1",
+    "start": "2026-04-20T11:30:00+00:00",
+    "end": "2026-04-20T14:00:00+00:00",
+    "duration_min": 150,
+    "content_runtime_min": 123
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0007",
+    "title": "Rogue One: A Star Wars Story",
+    "start": "2026-04-20T14:00:00+00:00",
+    "end": "2026-04-20T16:30:00+00:00",
+    "duration_min": 150,
+    "content_runtime_min": 133
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0008",
+    "title": "Black Swan",
+    "start": "2026-04-20T16:30:00+00:00",
+    "end": "2026-04-20T18:30:00+00:00",
+    "duration_min": 120,
+    "content_runtime_min": 108
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0009",
+    "title": "Alien",
+    "start": "2026-04-20T18:30:00+00:00",
+    "end": "2026-04-20T20:30:00+00:00",
+    "duration_min": 120,
+    "content_runtime_min": 117
+  },
+  {
+    "channel_id": "ch_runway_01",
+    "show_id": "s0010",
+    "title": "The Devil Wears Prada",
+    "start": "2026-04-20T20:30:00+00:00",
+    "end": "2026-04-20T22:30:00+00:00",
+    "duration_min": 120,
+    "content_runtime_min": 109
+  }
+]

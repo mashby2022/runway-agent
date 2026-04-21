@@ -1,2 +1,18 @@
-# Datasets — large files, not tracked in git
-data/
+# Raw large datasets — not tracked
+data/tmdb/
+data/movielens/
+data/netflix/
+
+# Generated data files ARE tracked (small, required on Brev without raw data)
+# data/*.json  ← do NOT ignore
+# data/*.pkl   ← do NOT ignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.tmp/
+
+# Secrets
+.env

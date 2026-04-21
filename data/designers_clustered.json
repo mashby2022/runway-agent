@@ -1,0 +1,948 @@
+[
+  {
+    "name": "Azzedine Ala\u00efa",
+    "born": "Tunisia",
+    "active_era": "1980s\u20132010s",
+    "career": "Studied in Tunis. Worked for Dior, Laroche and Mugler, then set up on his own.",
+    "hallmarks": "Clingy, seductive women's wear in leather and viscose.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Giorgio Armani",
+    "born": "Italy, 1935",
+    "active_era": "1970s\u2013present",
+    "career": "Designed for Cerruti and Ungaro before launching his own label. Began with men's wear, moved into women's wear.",
+    "hallmarks": "Elegant, uncluttered day wear for men and women.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Crist\u00f3bal Balenciaga",
+    "born": "Spain, 1895\u20131972",
+    "active_era": "1930s\u20131960s",
+    "career": "Trained as a tailor. Opened his own salon in San Sebasti\u00e1n, then moved to Paris. Particularly influential in the 1940s and 1950s.",
+    "hallmarks": "Superbly cut women's wear.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Pierre Balmain",
+    "born": "France, 1914\u20131982",
+    "active_era": "1940s\u20131980s",
+    "career": "No formal training. Worked for Molyneux and Lelong, before opening his own house in 1945.",
+    "hallmarks": "Versatility \u2014 elegant day, evening and sports wear.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty"
+    ]
+  },
+  {
+    "name": "Geoffrey Beene",
+    "born": "America, 1927",
+    "active_era": "1960s\u20132000s",
+    "career": "Studied in New York. Worked in Paris, then returned to the USA. Own company from 1963.",
+    "hallmarks": "Witty fantasy garments in opulent fabrics.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Pierre Cardin",
+    "born": "France, 1922",
+    "active_era": "1950s\u20132010s",
+    "career": "Career started as tailor's assistant. Designed theatrical costumes and men's wear, then expanded into women's wear.",
+    "hallmarks": "Dramatic collections with unifying themes.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Coco Chanel",
+    "born": "France, 1883\u20131971",
+    "real_name": "Gabrielle Chanel",
+    "active_era": "1910s\u20131970s",
+    "career": "Worked in a hat shop, opened two dress shops, and later her own fashion house in Paris.",
+    "hallmarks": "Classic women's wear in colours such as navy and beige.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Andr\u00e9 Courr\u00e8ges",
+    "born": "France, 1923",
+    "active_era": "1960s\u20131990s",
+    "career": "Left career as civil engineer to become a designer. Worked for Balenciaga; started own house in 1961.",
+    "hallmarks": "Stark, space age designs of the 1960s.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Oscar de la Renta",
+    "born": "Dominican Republic, 1932",
+    "active_era": "1960s\u20132010s",
+    "career": "Originally a painter. Worked for Balenciaga. Went to Paris, then New York, where he set up his own business.",
+    "hallmarks": "Exotic and elaborate evening gowns.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Christian Dior",
+    "born": "France, 1905\u20131957",
+    "active_era": "1940s\u20131950s",
+    "career": "No formal training. Worked with designers Piguet and Lelong. Presented his first collection in 1947.",
+    "hallmarks": "Classic haute couture.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Perry Ellis",
+    "born": "America, 1940\u20131987",
+    "active_era": "1970s\u20131980s",
+    "career": "Studied retailing and business. Worked in sportswear from 1968, own label from 1978.",
+    "hallmarks": "Classics in natural fabrics.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty"
+    ]
+  },
+  {
+    "name": "Fendi",
+    "born": "Italy (company)",
+    "founded": "1918",
+    "active_era": "1918\u2013present",
+    "career": "Founded by Adele Fendi, run since by her five daughters Paola, Alda, Franca, Carla and Anna and their families.",
+    "hallmarks": "Opulent fur clothing, fine leather goods.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Gianfranco Ferr\u00e9",
+    "born": "Italy, 1944",
+    "active_era": "1970s\u20132000s",
+    "career": "Qualified as an architect, but became designer of jewellery and accessories, then day wear and sports wear. Own house from 1978.",
+    "hallmarks": "Chic, well-cut clothes.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Elio Fiorucci",
+    "born": "Italy, 1935",
+    "active_era": "1960s\u20131990s",
+    "career": "Ran the family shoe shop from 1962 and expanded into clothes, supervising his own design team in Milan.",
+    "hallmarks": "Fun clothes and accessories for the young.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Jean-Paul Gaultier",
+    "born": "France, 1952",
+    "active_era": "1970s\u20132020s",
+    "career": "Started sketching designs in his teens. Worked for Cardin and Patou. Own business from 1977.",
+    "hallmarks": "Young, often daring, ready-to-wear designs.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Bill Gibb",
+    "born": "Scotland, 1943",
+    "active_era": "1960s\u20131980s",
+    "career": "Trained at St Martin's School of Art and the RCA London. Designed for Baccarat. Own firm in the 1970s.",
+    "hallmarks": "Lavish evening gowns.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty"
+    ]
+  },
+  {
+    "name": "Romeo Gigli",
+    "born": "Italy, 1950",
+    "active_era": "1980s\u20132000s",
+    "career": "Trained as an architect. Started work as a fashion designer in New York, returning to Milan to form his own company.",
+    "hallmarks": "Soft, romantic women's wear.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Roy Halston",
+    "born": "America, 1932\u20131990",
+    "active_era": "1960s\u20131980s",
+    "career": "Started in millinery (hats) and opened his own ready-to-wear business in 1966.",
+    "hallmarks": "Knitwear and figure-hugging clothes in jersey.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty"
+    ]
+  },
+  {
+    "name": "Katharine Hamnett",
+    "born": "England, 1948",
+    "active_era": "1970s\u2013present",
+    "career": "Trained at St Martin's School of Art, London. Own business from 1979.",
+    "hallmarks": "Slogan T-shirts and work wear. Revived 1950s style in the 1980s.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Betty Jackson",
+    "born": "England, 1940",
+    "active_era": "1980s\u20132010s",
+    "career": "Worked as an illustrator. Later designed for Wendy Dagworthy, Quorum and Coopers. Own company from 1981.",
+    "hallmarks": "Striking yet practical women's wear.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Norma Kamali",
+    "born": "America, 1945",
+    "active_era": "1960s\u2013present",
+    "career": "Studied in New York, opened a shop selling own designs in 1967. Sportier direction from 1978.",
+    "hallmarks": "Use of jersey fabrics.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Rei Kawakubo",
+    "born": "Japan, 1942",
+    "active_era": "1970s\u2013present",
+    "career": "Worked for a textile company in Japan 1964\u20131966. Became a freelance designer. Started Comme des Gar\u00e7ons in 1969.",
+    "hallmarks": "Original, sculptured designs, intricately cut.",
+    "house": "Comme des Gar\u00e7ons",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Donna Karan",
+    "born": "America, 1948",
+    "active_era": "1980s\u20132010s",
+    "career": "Trained in New York. Worked at Addenda and Anne Klein, specialising in sports wear. Own company from 1984.",
+    "hallmarks": "Seductive, clingy clothes such as the body suit.",
+    "house": "DKNY",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Kenzo",
+    "born": "Japan, 1940",
+    "active_era": "1970s\u20131990s",
+    "career": "Studied art in Japan, worked as a pattern designer for a magazine. Moved to Paris, opened own shop in 1970.",
+    "hallmarks": "Innovative knitwear.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Calvin Klein",
+    "born": "America, 1942",
+    "active_era": "1960s\u20132000s",
+    "career": "Studied in New York, started by designing outer wear. Own business from 1968.",
+    "hallmarks": "Sophisticated clothes in natural fabrics.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Karl Lagerfeld",
+    "born": "Germany, 1938",
+    "active_era": "1960s\u20132019",
+    "career": "Worked in Paris for Balmain and Patou, then went freelance. Design director for Chanel from 1983, own label from 1984.",
+    "hallmarks": "Bold, often witty designs.",
+    "houses": [
+      "Chanel",
+      "Fendi",
+      "Karl Lagerfeld"
+    ],
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Jeanne Lanvin",
+    "born": "France, 1867\u20131946",
+    "active_era": "1890s\u20131940s",
+    "career": "Trained as a dressmaker and milliner and ran her own Paris hat shop. Went into dressmaking then opened her own house.",
+    "hallmarks": "Mother and daughter outfits.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Ralph Lauren",
+    "born": "America, 1939",
+    "active_era": "1960s\u2013present",
+    "career": "Studied business in New York. Designed men's wear and expanded into women's wear, then started own company.",
+    "hallmarks": "Casual, sophisticated clothes in natural fabrics.",
+    "house": "Polo Ralph Lauren",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Missoni",
+    "born": "Italy (company)",
+    "founded": "1953",
+    "active_era": "1953\u2013present",
+    "career": "Founded by husband and wife Tai and Rosita Missoni. Started their knitwear label after selling freelance.",
+    "hallmarks": "Glamorous knitwear.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Hanae Mori",
+    "born": "Japan, 1926",
+    "active_era": "1950s\u20132000s",
+    "career": "Designed film costumes, and from 1955, fashions for her own shop. Moved to New York in 1977 where she opened her own fashion house.",
+    "hallmarks": "Oriental style evening wear.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Issey Miyake",
+    "born": "Japan, 1935",
+    "active_era": "1970s\u20132020s",
+    "career": "Studied fashion in Paris. Worked for Laroche, Givenchy and Geoffrey Beene. Own label since 1971.",
+    "hallmarks": "Rich textures and bold geometric shapes.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Thierry Mugler",
+    "born": "France, 1948",
+    "active_era": "1970s\u20132010s",
+    "career": "Worked as a window dresser in Paris. Designed under the Caf\u00e9 de Paris label. Own label from 1973.",
+    "hallmarks": "Dramatic, figure-hugging women's wear.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "Claude Montana",
+    "born": "France, 1949",
+    "active_era": "1970s\u20131990s",
+    "career": "Designed jewellery, then worked for a leather company in Paris. Launched own collection in 1977.",
+    "hallmarks": "Bold, assertive clothes, often in leather, often with a nature theme.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Jean Muir",
+    "born": "Scotland, 1933",
+    "active_era": "1960s\u20131990s",
+    "career": "Sketched clothes for Liberty. Moved to Jaeger and designed own range. Own company from 1966.",
+    "hallmarks": "Soft, classic clothes in jersey and suede.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Bruce Oldfield",
+    "born": "England, 1950",
+    "active_era": "1970s\u2013present",
+    "career": "Trained at Ravenborne College of Art and St Martin's School of Art. Freelance designer. First collection 1975.",
+    "hallmarks": "Chic evening wear.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Jean Patou",
+    "born": "France, 1880\u20131936",
+    "active_era": "1910s\u20131930s",
+    "career": "Worked in his uncle's fur business. Opened a couture house in 1912. Went on to design sports wear and sports-influenced day wear.",
+    "hallmarks": "Simple, well-cut classics. Helped introduce the tubular silhouette of the 1920s.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Mary Quant",
+    "born": "England, 1934",
+    "active_era": "1960s\u20131970s",
+    "career": "Worked for a milliner, then opened BAZAAR, a shop which sold her own lines.",
+    "hallmarks": "Bright, original, inexpensive clothes aimed at the young. Originated the A-line silhouette of 1960s styles.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Zandra Rhodes",
+    "born": "England, 1940",
+    "active_era": "1960s\u2013present",
+    "career": "Studied at the Royal College of Art in London. Printed own textiles which she made into dresses and sold. Own house from 1968.",
+    "hallmarks": "Exotic fantasy dresses.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Yves Saint Laurent",
+    "born": "France, 1936",
+    "active_era": "1950s\u20132000s",
+    "career": "Studied in Paris. Worked as head designer for Dior. Own house from 1962. Pioneered ready to wear.",
+    "hallmarks": "Casually stylish city clothes.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Elsa Schiaparelli",
+    "born": "Italy, 1890\u20131973",
+    "active_era": "1920s\u20131950s",
+    "career": "Studied philosophy. Designed and sold knitwear before first opening a shop, and then later her own fashion house.",
+    "hallmarks": "Witty, imaginative designs.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Angela Tarlazzi",
+    "born": "Italy, 1945",
+    "active_era": "1970s\u20131990s",
+    "career": "Worked for Carosa in Italy, then for Patou in Paris, eventually becoming the company's artistic director. Own house from 1978.",
+    "hallmarks": "Soft, fluid women's wear.",
+    "style_tribe": "Romantic Feminine",
+    "cluster_id": 1,
+    "top_tribe_terms": [
+      "women",
+      "women wear",
+      "wear",
+      "designed",
+      "2010s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Emanuel Ungaro",
+    "born": "Italy, 1933",
+    "active_era": "1960s\u20132000s",
+    "career": "Learned tailoring with the family business. Worked for Balenciaga and Courr\u00e8ges. Own business from 1965.",
+    "hallmarks": "Bold, sumptuous fabrics and colours.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Valentino",
+    "born": "Italy, 1933",
+    "real_name": "Valentino Garavani",
+    "active_era": "1960s\u20132000s",
+    "career": "Studied fashion in Milan and Paris. Worked in Paris with Dess\u00e8s and Laroche, before returning to Italy in 1959 to start his own fashion house.",
+    "hallmarks": "Glamorous couture garments.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Gianni Versace",
+    "born": "Italy, 1946",
+    "active_era": "1970s\u20131997",
+    "career": "Worked with his mother who was a dressmaker, then for Genny and Complice. Own fashion house from 1978.",
+    "hallmarks": "Elegant, well-cut clothes, often made from leather.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Vivienne Westwood",
+    "born": "England, 1941",
+    "active_era": "1970s\u20132020s",
+    "career": "Trained as a teacher. Opened 'World's End' selling punk clothes in the 1970s. Several influential collections since.",
+    "hallmarks": "Trendy, shocking theme collections.",
+    "style_tribe": "Avant-Garde",
+    "cluster_id": 0,
+    "top_tribe_terms": [
+      "trained",
+      "england",
+      "1970s",
+      "art",
+      "1960s"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture",
+      "American Woman: Fashioning a National Identity"
+    ]
+  },
+  {
+    "name": "House of Worth",
+    "born": "France (house)",
+    "founded": "1854",
+    "active_era": "1854\u20131954",
+    "career": "Started by Charles Frederick Worth, the first couturier. Run by his sons when he died. Taken over by the House of Paquin in 1954.",
+    "hallmarks": "Gowns for society ladies.",
+    "style_tribe": "Heritage Couture",
+    "cluster_id": 3,
+    "top_tribe_terms": [
+      "house",
+      "france",
+      "sports",
+      "1940s",
+      "run"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Yohji Yamamoto",
+    "born": "Japan, 1943",
+    "active_era": "1970s\u2013present",
+    "career": "Studied fashion in Tokyo. Worked freelance then started his own company in 1972.",
+    "hallmarks": "Innovative, loosely cut clothes.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": []
+  },
+  {
+    "name": "Yuki",
+    "born": "Japan, 1937",
+    "real_name": "Gnyuki Yamamoto",
+    "active_era": "1970s\u20131990s",
+    "career": "Trained as a textile designer, architect and fashion designer. Worked for Feraud, Michail, Hartnell and Cardin. Own business from 1973.",
+    "hallmarks": "Flowing jersey dresses.",
+    "style_tribe": "Street & Youth",
+    "cluster_id": 4,
+    "top_tribe_terms": [
+      "japan",
+      "worked",
+      "designer",
+      "1970s",
+      "paris"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  },
+  {
+    "name": "Zoran Ladicorbic",
+    "born": "Yugoslavia, 1947",
+    "active_era": "1970s\u20131990s",
+    "career": "Qualified as an architect. Moved to New York. Own collection since 1977.",
+    "hallmarks": "Stark designs in luxurious fabrics.",
+    "style_tribe": "Minimalist",
+    "cluster_id": 2,
+    "top_tribe_terms": [
+      "new york",
+      "york",
+      "new",
+      "america",
+      "fabrics"
+    ],
+    "met_gala_themes": [
+      "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty",
+      "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+    ]
+  }
+]

@@ -121,6 +121,147 @@ def lookup_content_metadata(content_id: str) -> dict:
     return {"error": f"Content '{content_id}' not found in catalog."}
 
 
+def get_strategic_programming_insight(query: str) -> dict:
+    """Recommend catalog content based on Style Tribe alignment from the ML engine.
+
+    Loads the GPU-clustered designer manifest and cross-references catalog titles
+    whose descriptions align with the queried tribe's aesthetic signal keywords.
+
+    Args:
+        query: A tribe name, aesthetic keyword, or designer name
+               (e.g. 'Avant-Garde', 'minimalist', 'Chanel').
+
+    Returns:
+        Dict with matched tribe, member designers, and recommended show_ids.
+    """
+    try:
+        manifest: dict = _load_json("data/tribe_manifest.json")
+        clustered: list[dict] = _load_json("data/designers_clustered.json")
+        catalog: list[dict] = _load_json("data/catalog.json")
+    except FileNotFoundError as e:
+        return {"error": f"{e.filename} not found. Run ml_engine.py first."}
+
+    q = query.lower()
+
+    # Match query to a tribe — try name match first, then keyword scan
+    matched_tribe: str | None = None
+    for tribe in manifest:
+        if q in tribe.lower():
+            matched_tribe = tribe
+            break
+    if not matched_tribe:
+        # Fall back: find any designer in the query and return their tribe
+        for designer in clustered:
+            if q in designer["name"].lower():
+                matched_tribe = designer["style_tribe"]
+                break
+    if not matched_tribe:
+        # Last resort: partial keyword match against tribe signal terms
+        for designer in clustered:
+            if any(q in term for term in designer.get("top_tribe_terms", [])):
+                matched_tribe = designer["style_tribe"]
+                break
+
+    if not matched_tribe:
+        return {
+            "error": f"No tribe matched '{query}'.",
+            "available_tribes": list(manifest.keys()),
+        }
+
+    tribe_designers = manifest[matched_tribe]
+    # Retrieve signal terms for this tribe from the first matching clustered entry
+    signal_terms: list[str] = []
+    for d in clustered:
+        if d["style_tribe"] == matched_tribe:
+            signal_terms = d.get("top_tribe_terms", [])
+            break
+
+    # Cross-reference catalog: score each title against tribe signal terms
+    recommendations = []
+    for item in catalog:
+        text = (str(item.get("description") or "") + " " + str(item.get("listed_in") or "")).lower()
+        score = sum(1 for term in signal_terms if term in text)
+        if score > 0:
+            recommendations.append({
+                "show_id": item["show_id"],
+                "title":   item["title"],
+                "score":   score,
+                "genres":  item.get("listed_in", ""),
+            })
+    recommendations.sort(key=lambda x: x["score"], reverse=True)
+
+    return {
+        "style_tribe":           matched_tribe,
+        "tribe_designers":       tribe_designers,
+        "tribe_signal_terms":    signal_terms,
+        "catalog_recommendations": recommendations[:10],
+        "source":                "Condé Nast Accelerated Intelligence Layer (GPU-clustered)",
+    }
+
+
+def find_similar_designers(brand_name: str) -> dict:
+    """Find stylistically similar designers using the cuML KNN similarity index.
+
+    Args:
+        brand_name: Designer or house name (e.g. 'Chanel', 'Vivienne Westwood').
+
+    Returns:
+        Dict with the input designer's tribe and their N nearest neighbours.
+    """
+    import pickle
+
+    try:
+        with open("data/knn_index.pkl", "rb") as f:
+            bundle = pickle.load(f)
+    except FileNotFoundError:
+        return {"error": "data/knn_index.pkl not found. Run ml_engine.py first."}
+
+    model       = bundle["model"]
+    names       = bundle["names"]
+    X           = bundle["matrix"]
+    tribe_labels = bundle["tribe_labels"]
+    using_cuml  = bundle.get("cuml", False)
+
+    # Find the designer in the index (case-insensitive partial match)
+    q = brand_name.lower()
+    idx = next((i for i, n in enumerate(names) if q in n.lower()), None)
+    if idx is None:
+        return {
+            "error": f"Designer '{brand_name}' not found in KNN index.",
+            "available": names,
+        }
+
+    query_vec = X[idx].reshape(1, -1)
+    if using_cuml:
+        import cupy as cp
+        distances, indices = model.kneighbors(cp.asarray(query_vec))
+        distances = cp.asnumpy(distances).flatten()
+        indices   = cp.asnumpy(indices).flatten()
+    else:
+        distances, indices = model.kneighbors(query_vec)
+        distances = distances.flatten()
+        indices   = indices.flatten()
+
+    neighbours = []
+    for dist, nidx in zip(distances, indices):
+        if int(nidx) == idx:
+            continue  # skip self
+        neighbours.append({
+            "designer":    names[int(nidx)],
+            "style_tribe": tribe_labels[int(nidx)],
+            "similarity":  round(1.0 - float(dist), 3),
+        })
+        if len(neighbours) >= 5:
+            break
+
+    return {
+        "query_designer":  names[idx],
+        "query_tribe":     tribe_labels[idx],
+        "similar_designers": neighbours,
+        "index_backend":   "cuML KNN (GPU)" if using_cuml else "sklearn KNN (CPU)",
+    }
+
+
 def search_fashion_designers(query: str) -> list[dict]:
     """Search the fashion designer knowledge base by name, house, hallmark, or era.
 

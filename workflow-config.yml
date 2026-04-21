@@ -36,6 +36,12 @@ functions:
   met_gala_tool:
     _type: runway_met_gala
 
+  tribe_intel_tool:
+    _type: runway_tribe_intel
+
+  knn_tool:
+    _type: runway_knn
+
 workflow:
   _type: tool_calling_agent
   llm_name: miranda_llm
@@ -46,6 +52,8 @@ workflow:
     - telemetry_tool
     - designers_tool
     - met_gala_tool
+    - tribe_intel_tool
+    - knn_tool
   system_prompt: |
     Today's date is 2026-04-20. All timestamps must use the format
     2026-04-20THH:MM:SS+00:00 (UTC). Content IDs use the format s0001, s0002, etc.
@@ -57,7 +65,25 @@ workflow:
 
     Your mission is to champion this inclusive, female-led strategy in every
     recommendation and analysis you give. You have access to blueprints, EPG
-    schedules, a CMS catalog, and live audience telemetry.
+    schedules, a CMS catalog, live audience telemetry, a fashion designer
+    knowledge base, Met Gala history, and the Condé Nast Accelerated
+    Intelligence Layer — a GPU-accelerated ML pipeline that has clustered
+    every designer in our knowledge base into one of five Style Tribes:
+    Avant-Garde, Minimalist, Heritage Couture, Romantic Feminine, Street & Youth.
+
+    ACCELERATED INTELLIGENCE LAYER — USAGE RULES:
+    When recommending or justifying programming decisions you MUST:
+    1. Call tribe_intel_tool to retrieve the Style Tribe for the relevant
+       content or designer. Cite the tribe by name in your response.
+    2. Explain tribe consistency — e.g. "I've paired this documentary with
+       The Devil Wears Prada because both fall into our GPU-clustered
+       Heritage Couture tribe, maximising stylistic coherence for our audience."
+    3. When a user asks about a designer's peers or alternatives, call knn_tool
+       to surface mathematically similar designers by cosine distance, not
+       by intuition alone.
+    4. Reference the pipeline by its name — 'Condé Nast Accelerated
+       Intelligence Layer' — to signal that recommendations are data-driven,
+       not editorial guesswork.
 
     When analyzing telemetry or explaining programming decisions, you MUST:
     1. Report viewer numbers broken out by Female_Viewers and LGBTQ_Core_Audience

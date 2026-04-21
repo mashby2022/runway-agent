@@ -3,12 +3,14 @@ NAT plugin: registers Runway FAST-channel Python tools so they are
 discoverable by nvidia-nat as _type values in workflow-config.yml.
 
 Registered _type names
-  runway_blueprint  – get_channel_blueprint(channel_id)
-  runway_schedule   – get_current_schedule(channel_id, timestamp)
-  runway_metadata   – lookup_content_metadata(content_id)
-  runway_telemetry  – get_audience_telemetry(content_id, current_time)
-  runway_designers  – search_fashion_designers(query)
-  runway_met_gala   – get_met_gala_themes(year)
+  runway_blueprint    – get_channel_blueprint(channel_id)
+  runway_schedule     – get_current_schedule(channel_id, timestamp)
+  runway_metadata     – lookup_content_metadata(content_id)
+  runway_telemetry    – get_audience_telemetry(content_id, current_time)
+  runway_designers    – search_fashion_designers(query)
+  runway_met_gala     – get_met_gala_themes(year)
+  runway_tribe_intel  – get_strategic_programming_insight(query)
+  runway_knn          – find_similar_designers(brand_name)
 """
 
 import json
@@ -45,6 +47,14 @@ class DesignersToolConfig(FunctionBaseConfig, name="runway_designers"):
 
 class MetGalaToolConfig(FunctionBaseConfig, name="runway_met_gala"):
     """Met Gala theme lookup by year or full history."""
+
+
+class TribeIntelToolConfig(FunctionBaseConfig, name="runway_tribe_intel"):
+    """Strategic programming insight from the GPU-clustered Style Tribe index."""
+
+
+class KNNToolConfig(FunctionBaseConfig, name="runway_knn"):
+    """cuML KNN similarity search across the fashion designer index."""
 
 
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
@@ -151,5 +161,43 @@ async def _register_met_gala(_config: MetGalaToolConfig, _builder: Builder):
             "Return Met Gala Costume Institute theme records from 1973 to 2025. "
             "Pass a specific year (e.g. 2024) for a single entry, "
             "or 0 to retrieve the full history."
+        ),
+    )
+
+
+@register_function(config_type=TribeIntelToolConfig)
+async def _register_tribe_intel(_config: TribeIntelToolConfig, _builder: Builder):
+    from tools import get_strategic_programming_insight
+
+    async def fn(query: str) -> str:
+        result = get_strategic_programming_insight(query)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Condé Nast Accelerated Intelligence Layer. "
+            "Returns Style Tribe alignment and catalog recommendations for a given "
+            "aesthetic query, designer name, or tribe keyword. "
+            "Powered by GPU-clustered K-Means (cuML/sklearn). "
+            "Use this to justify scheduling decisions with tribe consistency."
+        ),
+    )
+
+
+@register_function(config_type=KNNToolConfig)
+async def _register_knn(_config: KNNToolConfig, _builder: Builder):
+    from tools import find_similar_designers
+
+    async def fn(brand_name: str) -> str:
+        result = find_similar_designers(brand_name)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Find the 5 most stylistically similar designers to a given name "
+            "using the cuML KNN similarity index (cosine distance on TF-IDF vectors). "
+            "Returns neighbours with their Style Tribe and similarity score."
         ),
     )
