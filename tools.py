@@ -11,16 +11,76 @@ from typing import Any
 # ── Hybrid Execution Mode ───────────────────────────────────────────────────
 # ONLINE  → cuDF / cuML on NVIDIA GPU (Brev A10G instance)
 # OFFLINE → pandas / sklearn on local CPU (MacBook, no GPU required)
-EXECUTION_MODE: str = "OFFLINE"
+#
+# Mode is persisted in data/mode.json so the sidecar API server and the
+# NAT server stay in sync without sharing process memory.
+
+import os as _os
+
+_MODE_FILE = _os.path.join(_os.path.dirname(__file__), "data", "mode.json")
+
+# Detect GPU at import time — cudf only exists on RAPIDS-enabled instances
+import importlib.util as _importlib_util
+HAS_GPU: bool = _importlib_util.find_spec("cudf") is not None
 
 _COMPUTE_PROFILES = {
-    "ONLINE":  {"source_compute": "NVIDIA A10G (Brev GPU)", "gpu_boost": "35x",   "latency_ms": 12},
-    "OFFLINE": {"source_compute": "MacBook Local (CPU)",    "gpu_boost": "1x",    "latency_ms": 180},
+    "ONLINE":  {
+        "source_compute": "NVIDIA A10G (Brev GPU)",
+        "engine":         "NVIDIA RAPIDS (cuDF)",
+        "gpu_boost":      "35x",
+        "latency_ms":     12,
+    },
+    "OFFLINE": {
+        "source_compute": "MacBook Local (CPU)",
+        "engine":         "Mock RAPIDS (Pandas)",
+        "gpu_boost":      "1x",
+        "latency_ms":     180,
+    },
 }
+
+
+def get_performance_metadata() -> dict:
+    """Return a Technical Audit dictionary for the current execution mode.
+
+    Suitable for embedding in every tool response and surfacing in the UI.
+    """
+    mode = _read_mode()
+    profile = _COMPUTE_PROFILES[mode]
+    return {
+        "execution_mode": mode,
+        "source_compute": profile["source_compute"],
+        "engine":         profile["engine"],
+        "gpu_boost":      profile["gpu_boost"],
+        "latency_ms":     profile["latency_ms"],
+        "has_gpu":        HAS_GPU,
+        "pipeline":       "Condé Nast Accelerated Intelligence Layer",
+    }
+
+
+def _read_mode() -> str:
+    try:
+        with open(_MODE_FILE) as f:
+            return json.load(f).get("mode", "OFFLINE")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return "OFFLINE"
+
+
+def _write_mode(mode: str) -> None:
+    with open(_MODE_FILE, "w") as f:
+        json.dump({"mode": mode}, f)
+
+
+# Module-level alias kept for backwards compat — always read live from file
+@property  # type: ignore[misc]
+def EXECUTION_MODE() -> str:  # noqa: N802
+    return _read_mode()
 
 
 def toggle_system_mode(mode: str) -> dict:
     """Switch the pipeline between ONLINE (GPU) and OFFLINE (CPU mock) modes.
+
+    Persists the choice to data/mode.json so the sidecar API server and the
+    NAT agent stay in sync across process boundaries.
 
     Args:
         mode: 'ONLINE' or 'OFFLINE' (case-insensitive).
@@ -28,29 +88,29 @@ def toggle_system_mode(mode: str) -> dict:
     Returns:
         Confirmation dict with the active mode and compute profile.
     """
-    global EXECUTION_MODE
     mode = mode.upper().strip()
     if mode not in _COMPUTE_PROFILES:
         return {"error": f"Unknown mode '{mode}'. Use 'ONLINE' or 'OFFLINE'."}
-    EXECUTION_MODE = mode
+    _write_mode(mode)
     return {
-        "status":          "mode_switched",
-        "execution_mode":  EXECUTION_MODE,
-        **_COMPUTE_PROFILES[EXECUTION_MODE],
+        "status":         "mode_switched",
+        "execution_mode": mode,
+        **_COMPUTE_PROFILES[mode],
     }
 
 
 def _compute_meta(rows: int = 0) -> dict:
     """Return the current compute profile for embedding in tool responses."""
-    profile = _COMPUTE_PROFILES[EXECUTION_MODE]
+    mode = _read_mode()
+    profile = _COMPUTE_PROFILES[mode]
     return {
-        "execution_mode":  EXECUTION_MODE,
-        "source_compute":  profile["source_compute"],
-        "engine":          "RAPIDS cuDF/cuML" if EXECUTION_MODE == "ONLINE" else "RAPIDS Mock",
-        "gpu_boost":       profile["gpu_boost"],
-        "latency_ms":      profile["latency_ms"],
-        "rows_processed":  rows,
-        "pipeline":        "Condé Nast Accelerated Intelligence Layer",
+        "execution_mode": mode,
+        "source_compute": profile["source_compute"],
+        "engine":         "RAPIDS cuDF/cuML" if mode == "ONLINE" else "RAPIDS Mock",
+        "gpu_boost":      profile["gpu_boost"],
+        "latency_ms":     profile["latency_ms"],
+        "rows_processed": rows,
+        "pipeline":       "Condé Nast Accelerated Intelligence Layer",
     }
 
 
@@ -70,7 +130,7 @@ def accelerated_data_crunch(df: Any) -> tuple[Any, dict]:
     """
     import pandas as pd
 
-    if EXECUTION_MODE == "ONLINE":
+    if _read_mode() == "ONLINE":
         try:
             import cudf
             gpu_df = cudf.DataFrame.from_pandas(df)

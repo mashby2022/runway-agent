@@ -216,5 +216,4 @@ Every movie airs inside a block snapped to the nearest 30-minute boundary. The g
 - **High-Fashion Ad Breaks** — premium sponsors aligned to Female/LGBT+ audience
 - **Exclusive Designer Interviews** — original interstitial content
 
-Miranda's scripted response when asked why a 109-minute film takes 2 hours:
-> *"We don't just play movies, we curate experiences. The remaining 11 minutes are for the world-class interstitials this audience deserves."*
+
