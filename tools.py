@@ -304,6 +304,104 @@ def get_met_gala_themes(year: int | None = None) -> list[dict]:
     return themes
 
 
+def update_schedule_slot(slot_time: str, new_title: str) -> str:
+    """Replace the title in a schedule slot and recalculate runtime/padding.
+
+    Args:
+        slot_time: ISO-8601 start time of the slot, or HH:MM shorthand (UTC).
+                   E.g. '2026-04-20T16:00:00+00:00' or '16:00'.
+        new_title: Exact or partial title of the replacement film from catalog.json.
+
+    Returns:
+        A success or error message string.
+    """
+    import os
+
+    SCHEDULE_PATH = "data/schedule.json"
+    CATALOG_PATH  = "data/catalog.json"
+
+    try:
+        slots: list[dict] = _load_json(SCHEDULE_PATH)
+    except FileNotFoundError:
+        return json.dumps({"error": "data/schedule.json not found."})
+
+    try:
+        catalog: list[dict] = _load_json(CATALOG_PATH)
+    except FileNotFoundError:
+        return json.dumps({"error": "data/catalog.json not found."})
+
+    # Parse slot_time — accept full ISO or bare HH:MM
+    target_dt: datetime | None = None
+    try:
+        target_dt = datetime.fromisoformat(slot_time)
+        if target_dt.tzinfo is None:
+            target_dt = target_dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        # Try HH:MM or HH:MM:SS shorthand against the schedule date
+        try:
+            t = datetime.strptime(slot_time.strip(), "%H:%M")
+            target_dt = datetime(2026, 4, 20, t.hour, t.minute, tzinfo=timezone.utc)
+        except ValueError:
+            return json.dumps({"error": f"Cannot parse slot_time '{slot_time}'. Use ISO-8601 or HH:MM."})
+
+    # Find the slot
+    slot_idx: int | None = None
+    for i, slot in enumerate(slots):
+        try:
+            start = datetime.fromisoformat(slot["start"])
+        except (KeyError, ValueError):
+            continue
+        if start == target_dt:
+            slot_idx = i
+            break
+
+    if slot_idx is None:
+        available = [s["start"] for s in slots]
+        return json.dumps({"error": f"No slot found starting at '{slot_time}'.", "available_slots": available})
+
+    # Find the new title in catalog (case-insensitive partial match)
+    q = new_title.lower().strip()
+    catalog_match: dict | None = None
+    for item in catalog:
+        if q in item.get("title", "").lower():
+            catalog_match = item
+            break
+
+    if catalog_match is None:
+        return json.dumps({"error": f"Title '{new_title}' not found in catalog."})
+
+    runtime_min: int = catalog_match.get("runtime_min", 90)
+    block_min: int   = ((runtime_min + 29) // 30) * 30
+    interstitial_min = block_min - runtime_min
+
+    old_title   = slots[slot_idx].get("title", "")
+    slot_start  = datetime.fromisoformat(slots[slot_idx]["start"])
+    new_end     = slot_start.replace(tzinfo=timezone.utc) + __import__("datetime").timedelta(minutes=block_min)
+
+    slots[slot_idx]["title"]               = catalog_match["title"]
+    slots[slot_idx]["show_id"]             = catalog_match.get("show_id", slots[slot_idx].get("show_id", ""))
+    slots[slot_idx]["content_runtime_min"] = runtime_min
+    slots[slot_idx]["duration_min"]        = block_min
+    slots[slot_idx]["interstitial_min"]    = interstitial_min
+    slots[slot_idx]["end"]                 = new_end.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+    with open(SCHEDULE_PATH, "w") as f:
+        json.dump(slots, f, indent=2)
+
+    return json.dumps({
+        "status": "updated",
+        "slot_start": slots[slot_idx]["start"],
+        "previous_title": old_title,
+        "new_title": catalog_match["title"],
+        "content_runtime_min": runtime_min,
+        "block_duration_min": block_min,
+        "interstitial_min": interstitial_min,
+        "message": (
+            f"The collection has been edited. It is much improved. That is all."
+        ),
+    })
+
+
 def get_audience_telemetry(content_id: str, current_time: str) -> list[dict]:
     """Return viewership demographic data for an asset at a given hour.
 

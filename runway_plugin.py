@@ -3,14 +3,15 @@ NAT plugin: registers Runway FAST-channel Python tools so they are
 discoverable by nvidia-nat as _type values in workflow-config.yml.
 
 Registered _type names
-  runway_blueprint    – get_channel_blueprint(channel_id)
-  runway_schedule     – get_current_schedule(channel_id, timestamp)
-  runway_metadata     – lookup_content_metadata(content_id)
-  runway_telemetry    – get_audience_telemetry(content_id, current_time)
-  runway_designers    – search_fashion_designers(query)
-  runway_met_gala     – get_met_gala_themes(year)
-  runway_tribe_intel  – get_strategic_programming_insight(query)
-  runway_knn          – find_similar_designers(brand_name)
+  runway_blueprint       – get_channel_blueprint(channel_id)
+  runway_schedule        – get_current_schedule(channel_id, timestamp)
+  runway_metadata        – lookup_content_metadata(content_id)
+  runway_telemetry       – get_audience_telemetry(content_id, current_time)
+  runway_designers       – search_fashion_designers(query)
+  runway_met_gala        – get_met_gala_themes(year)
+  runway_tribe_intel     – get_strategic_programming_insight(query)
+  runway_knn             – find_similar_designers(brand_name)
+  runway_update_schedule – update_schedule_slot(slot_time, new_title)
 """
 
 import json
@@ -57,6 +58,10 @@ class KNNToolConfig(FunctionBaseConfig, name="runway_knn"):
     """cuML KNN similarity search across the fashion designer index."""
 
 
+class UpdateScheduleToolConfig(FunctionBaseConfig, name="runway_update_schedule"):
+    """Update a schedule slot with a new title and recalculate block padding."""
+
+
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
 # FunctionInfo.from_fn requires exactly one parameter; use Pydantic models
 # for tools that originally took two arguments.
@@ -64,6 +69,11 @@ class KNNToolConfig(FunctionBaseConfig, name="runway_knn"):
 class ScheduleQuery(BaseModel):
     channel_id: str = Field(description="Channel identifier, e.g. 'ch_runway_01'")
     timestamp: str = Field(description="ISO-8601 timestamp, e.g. '2026-04-20T16:00:00+00:00'")
+
+
+class UpdateScheduleQuery(BaseModel):
+    slot_time: str = Field(description="ISO-8601 start time or HH:MM shorthand, e.g. '16:00' or '2026-04-20T16:00:00+00:00'")
+    new_title: str = Field(description="Title of the replacement film from the catalog, e.g. 'Clueless'")
 
 
 class TelemetryQuery(BaseModel):
@@ -199,5 +209,24 @@ async def _register_knn(_config: KNNToolConfig, _builder: Builder):
             "Find the 5 most stylistically similar designers to a given name "
             "using the cuML KNN similarity index (cosine distance on TF-IDF vectors). "
             "Returns neighbours with their Style Tribe and similarity score."
+        ),
+    )
+
+
+@register_function(config_type=UpdateScheduleToolConfig)
+async def _register_update_schedule(_config: UpdateScheduleToolConfig, _builder: Builder):
+    from tools import update_schedule_slot
+
+    async def fn(query: UpdateScheduleQuery) -> str:
+        return update_schedule_slot(query.slot_time, query.new_title)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Miranda's Strategic Authority tool. "
+            "Replace the film in a specific schedule slot with a new title from the catalog. "
+            "Automatically looks up the replacement film's runtime, recalculates the "
+            "block_duration_min (nearest 30-min boundary), and updates interstitial padding. "
+            "Pass slot_time as ISO-8601 or HH:MM (e.g. '16:00'), and new_title as the film name."
         ),
     )

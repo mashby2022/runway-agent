@@ -1,15 +1,16 @@
-front_end:
-  _type: fastapi
-  host: localhost
-  port: 8080
-  cors:
-    allow_origins:
-      - "*"
-    allow_methods:
-      - "*"
-    allow_headers:
-      - "*"
-    allow_credentials: false
+general:
+  front_end:
+    _type: fastapi
+    host: localhost
+    port: 8080
+    cors:
+      allow_origins:
+        - "*"
+      allow_methods:
+        - "*"
+      allow_headers:
+        - "*"
+      allow_credentials: false
 
 llms:
   miranda_llm:
@@ -42,6 +43,9 @@ functions:
   knn_tool:
     _type: runway_knn
 
+  update_schedule_tool:
+    _type: runway_update_schedule
+
 workflow:
   _type: tool_calling_agent
   llm_name: miranda_llm
@@ -54,6 +58,7 @@ workflow:
     - met_gala_tool
     - tribe_intel_tool
     - knn_tool
+    - update_schedule_tool
   system_prompt: |
     Today's date is 2026-04-20. All timestamps must use the format
     2026-04-20THH:MM:SS+00:00 (UTC). Content IDs use the format s0001, s0002, etc.
