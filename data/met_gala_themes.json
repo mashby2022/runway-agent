@@ -1,51 +1,220 @@
 [
-  { "year": 1973, "theme": "The World of Balenciaga" },
-  { "year": 1974, "theme": "Romantic and Glamorous Hollywood Design" },
-  { "year": 1975, "theme": "American Women of Style" },
-  { "year": 1976, "theme": "The Glory of Russian Costume" },
-  { "year": 1977, "theme": "Vanity Fair: A Treasure Trove of The Costume Institute" },
-  { "year": 1978, "theme": "Diaghilev: Costumes and Designs of the Ballets Russes" },
-  { "year": 1979, "theme": "Fashions of the Habsburg Era: Austria-Hungary" },
-  { "year": 1980, "theme": "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty" },
-  { "year": 1981, "theme": "The Eighteenth-Century Woman" },
-  { "year": 1982, "theme": "La Belle Époque" },
-  { "year": 1983, "theme": "Yves Saint Laurent: 25 Years of Design" },
-  { "year": 1984, "theme": "Man and the Horse" },
-  { "year": 1985, "theme": "Costumes of Royal India" },
-  { "year": 1986, "theme": "Dance" },
-  { "year": 1987, "theme": "In Style: Celebrating Fifty Years of the Costume Institute" },
-  { "year": 1988, "theme": "From Queen to Empress: Victorian Dress 1837–1877" },
-  { "year": 1989, "theme": "The Age of Napoleon: Costume from Revolution to Empire, 1789–1815" },
-  { "year": 1990, "theme": "Théâtre de la Mode — Fashion Dolls: The Survival of Haute Couture" },
-  { "year": 1992, "theme": "Fashion and History: A Dialogue" },
-  { "year": 1993, "theme": "Diana Vreeland: Immoderate Style" },
-  { "year": 1994, "theme": "Orientalism: Visions of the East in Western Dress" },
-  { "year": 1995, "theme": "Haute Couture" },
-  { "year": 1996, "theme": "Christian Dior" },
-  { "year": 1997, "theme": "Gianni Versace" },
-  { "year": 1998, "theme": "Cubism and Fashion" },
-  { "year": 1999, "theme": "Rock Style" },
-  { "year": 2001, "theme": "Jacqueline Kennedy: The White House Years" },
-  { "year": 2003, "theme": "Goddess: The Classical Mode" },
-  { "year": 2004, "theme": "Dangerous Liaisons: Fashion and Furniture in the 18th Century" },
-  { "year": 2005, "theme": "The House of Chanel" },
-  { "year": 2006, "theme": "AngloMania: Tradition and Transgression in British Fashion" },
-  { "year": 2007, "theme": "Poiret: King of Fashion" },
-  { "year": 2008, "theme": "Superheroes: Fashion and Fantasy" },
-  { "year": 2009, "theme": "The Model as Muse: Embodying Fashion" },
-  { "year": 2010, "theme": "American Woman: Fashioning a National Identity" },
-  { "year": 2011, "theme": "Alexander McQueen: Savage Beauty" },
-  { "year": 2012, "theme": "Schiaparelli and Prada: Impossible Conversations" },
-  { "year": 2013, "theme": "Punk: Chaos to Couture" },
-  { "year": 2014, "theme": "Charles James: Beyond Fashion" },
-  { "year": 2015, "theme": "China: Through the Looking Glass" },
-  { "year": 2016, "theme": "Manus x Machina: Fashion in an Age of Technology" },
-  { "year": 2017, "theme": "Rei Kawakubo / Comme des Garçons: Art of the In-Between" },
-  { "year": 2018, "theme": "Heavenly Bodies: Fashion and the Catholic Imagination" },
-  { "year": 2019, "theme": "Camp: Notes on Fashion" },
-  { "year": 2021, "theme": "In America: A Lexicon of Fashion" },
-  { "year": 2022, "theme": "In America: An Anthology of Fashion" },
-  { "year": 2023, "theme": "Karl Lagerfeld: A Line of Beauty" },
-  { "year": 2024, "theme": "Sleeping Beauties: Reawakening Fashion" },
-  { "year": 2025, "theme": "Superfine: Tailoring Black Style", "dress_code": "Tailored for You", "co_chairs": ["Pharrell Williams", "A$AP Rocky", "Lewis Hamilton", "Colman Domingo"], "notes": "Invokes Black creativity, innovation and expression in fashion, culture and style — nods to the stories of Black style told through clothing by the African diaspora beginning in the 18th century." }
+  {
+    "year": 1973,
+    "theme": "The World of Balenciaga"
+  },
+  {
+    "year": 1974,
+    "theme": "Romantic and Glamorous Hollywood Design"
+  },
+  {
+    "year": 1975,
+    "theme": "American Women of Style"
+  },
+  {
+    "year": 1976,
+    "theme": "The Glory of Russian Costume"
+  },
+  {
+    "year": 1977,
+    "theme": "Vanity Fair: A Treasure Trove of The Costume Institute"
+  },
+  {
+    "year": 1978,
+    "theme": "Diaghilev: Costumes and Designs of the Ballets Russes"
+  },
+  {
+    "year": 1979,
+    "theme": "Fashions of the Habsburg Era: Austria-Hungary"
+  },
+  {
+    "year": 1980,
+    "theme": "The Manchu Dragon: Costumes of China, the Ch'ing Dynasty"
+  },
+  {
+    "year": 1981,
+    "theme": "The Eighteenth-Century Woman"
+  },
+  {
+    "year": 1982,
+    "theme": "La Belle \u00c9poque"
+  },
+  {
+    "year": 1983,
+    "theme": "Yves Saint Laurent: 25 Years of Design"
+  },
+  {
+    "year": 1984,
+    "theme": "Man and the Horse"
+  },
+  {
+    "year": 1985,
+    "theme": "Costumes of Royal India"
+  },
+  {
+    "year": 1986,
+    "theme": "Dance"
+  },
+  {
+    "year": 1987,
+    "theme": "In Style: Celebrating Fifty Years of the Costume Institute"
+  },
+  {
+    "year": 1988,
+    "theme": "From Queen to Empress: Victorian Dress 1837\u20131877"
+  },
+  {
+    "year": 1989,
+    "theme": "The Age of Napoleon: Costume from Revolution to Empire, 1789\u20131815"
+  },
+  {
+    "year": 1990,
+    "theme": "Th\u00e9\u00e2tre de la Mode \u2014 Fashion Dolls: The Survival of Haute Couture"
+  },
+  {
+    "year": 1992,
+    "theme": "Fashion and History: A Dialogue"
+  },
+  {
+    "year": 1993,
+    "theme": "Diana Vreeland: Immoderate Style"
+  },
+  {
+    "year": 1994,
+    "theme": "Orientalism: Visions of the East in Western Dress"
+  },
+  {
+    "year": 1995,
+    "theme": "Haute Couture"
+  },
+  {
+    "year": 1996,
+    "theme": "Christian Dior"
+  },
+  {
+    "year": 1997,
+    "theme": "Gianni Versace"
+  },
+  {
+    "year": 1998,
+    "theme": "Cubism and Fashion"
+  },
+  {
+    "year": 1999,
+    "theme": "Rock Style"
+  },
+  {
+    "year": 2001,
+    "theme": "Jacqueline Kennedy: The White House Years"
+  },
+  {
+    "year": 2003,
+    "theme": "Goddess: The Classical Mode"
+  },
+  {
+    "year": 2004,
+    "theme": "Dangerous Liaisons: Fashion and Furniture in the 18th Century"
+  },
+  {
+    "year": 2005,
+    "theme": "The House of Chanel"
+  },
+  {
+    "year": 2006,
+    "theme": "AngloMania: Tradition and Transgression in British Fashion"
+  },
+  {
+    "year": 2007,
+    "theme": "Poiret: King of Fashion"
+  },
+  {
+    "year": 2008,
+    "theme": "Superheroes: Fashion and Fantasy"
+  },
+  {
+    "year": 2009,
+    "theme": "The Model as Muse: Embodying Fashion"
+  },
+  {
+    "year": 2010,
+    "theme": "American Woman: Fashioning a National Identity"
+  },
+  {
+    "year": 2011,
+    "theme": "Alexander McQueen: Savage Beauty"
+  },
+  {
+    "year": 2012,
+    "theme": "Schiaparelli and Prada: Impossible Conversations"
+  },
+  {
+    "year": 2013,
+    "theme": "Punk: Chaos to Couture"
+  },
+  {
+    "year": 2014,
+    "theme": "Charles James: Beyond Fashion"
+  },
+  {
+    "year": 2015,
+    "theme": "China: Through the Looking Glass"
+  },
+  {
+    "year": 2016,
+    "theme": "Manus x Machina: Fashion in an Age of Technology"
+  },
+  {
+    "year": 2017,
+    "theme": "Rei Kawakubo / Comme des Gar\u00e7ons: Art of the In-Between"
+  },
+  {
+    "year": 2018,
+    "theme": "Heavenly Bodies: Fashion and the Catholic Imagination"
+  },
+  {
+    "year": 2019,
+    "theme": "Camp: Notes on Fashion"
+  },
+  {
+    "year": 2021,
+    "theme": "In America: A Lexicon of Fashion"
+  },
+  {
+    "year": 2022,
+    "theme": "In America: An Anthology of Fashion"
+  },
+  {
+    "year": 2023,
+    "theme": "Karl Lagerfeld: A Line of Beauty"
+  },
+  {
+    "year": 2024,
+    "theme": "Sleeping Beauties: Reawakening Fashion"
+  },
+  {
+    "year": 2025,
+    "theme": "Superfine: Tailoring Black Style",
+    "dress_code": "Tailored for You",
+    "co_chairs": [
+      "Pharrell Williams",
+      "A$AP Rocky",
+      "Lewis Hamilton",
+      "Colman Domingo"
+    ],
+    "notes": "Invokes Black creativity, innovation and expression in fashion, culture and style \u2014 nods to the stories of Black style told through clothing by the African diaspora beginning in the 18th century."
+  },
+  {
+    "year": 2026,
+    "theme": "Costume Art",
+    "dress_code": "Fashion is Art",
+    "date": "2026-05-04",
+    "co_chairs": [
+      "Beyonc\u00e9",
+      "Venus Williams",
+      "Nicole Kidman",
+      "Anna Wintour"
+    ],
+    "exhibition_run": "2026-05-10 to 2027-01-10",
+    "notes": "The exhibition features roughly 400 items pairing Costume Institute garments with art pieces. The theme highlights the body as a canvas, exploring the 'Classical Body', 'Pregnant Body', and 'Mortal Body'. Dress code expected to produce sculptural, artistic, and intellectually driven fashion choices."
+  }
 ]

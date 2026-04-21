@@ -12,6 +12,7 @@ Registered _type names
   runway_tribe_intel     – get_strategic_programming_insight(query)
   runway_knn             – find_similar_designers(brand_name)
   runway_update_schedule – update_schedule_slot(slot_time, new_title)
+  runway_toggle_mode     – toggle_system_mode(mode)
 """
 
 import json
@@ -60,6 +61,10 @@ class KNNToolConfig(FunctionBaseConfig, name="runway_knn"):
 
 class UpdateScheduleToolConfig(FunctionBaseConfig, name="runway_update_schedule"):
     """Update a schedule slot with a new title and recalculate block padding."""
+
+
+class ToggleModeToolConfig(FunctionBaseConfig, name="runway_toggle_mode"):
+    """Switch pipeline execution between ONLINE (GPU) and OFFLINE (CPU mock) modes."""
 
 
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
@@ -209,6 +214,26 @@ async def _register_knn(_config: KNNToolConfig, _builder: Builder):
             "Find the 5 most stylistically similar designers to a given name "
             "using the cuML KNN similarity index (cosine distance on TF-IDF vectors). "
             "Returns neighbours with their Style Tribe and similarity score."
+        ),
+    )
+
+
+@register_function(config_type=ToggleModeToolConfig)
+async def _register_toggle_mode(_config: ToggleModeToolConfig, _builder: Builder):
+    from tools import toggle_system_mode
+
+    async def fn(mode: str) -> str:
+        result = toggle_system_mode(mode)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Switch the analytics pipeline between ONLINE (NVIDIA A10G GPU via cuDF/cuML) "
+            "and OFFLINE (MacBook CPU via pandas mock) execution modes. "
+            "Pass 'ONLINE' or 'OFFLINE'. "
+            "All subsequent tool calls will reflect the active compute profile in their "
+            "source_compute and engine metadata fields."
         ),
     )
 
