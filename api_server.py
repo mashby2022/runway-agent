@@ -7,6 +7,7 @@ Start alongside nat serve:
     python api_server.py &
 """
 
+import importlib.util
 import json
 import os
 
@@ -16,6 +17,8 @@ from pydantic import BaseModel
 import uvicorn
 
 MODE_FILE = os.path.join(os.path.dirname(__file__), "data", "mode.json")
+
+HAS_GPU: bool = importlib.util.find_spec("cudf") is not None
 
 _COMPUTE_PROFILES = {
     "ONLINE":  {"source_compute": "NVIDIA A10G (Brev GPU)", "gpu_boost": "35x",  "latency_ms": 12},
@@ -52,7 +55,11 @@ class ModeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "runway-sidecar"}
+    return {
+        "status":       "alive",
+        "engine":       _read_mode(),
+        "gpu_detected": HAS_GPU,
+    }
 
 
 @app.get("/system_mode")
