@@ -7,6 +7,8 @@ Registered _type names
   runway_schedule   – get_current_schedule(channel_id, timestamp)
   runway_metadata   – lookup_content_metadata(content_id)
   runway_telemetry  – get_audience_telemetry(content_id, current_time)
+  runway_designers  – search_fashion_designers(query)
+  runway_met_gala   – get_met_gala_themes(year)
 """
 
 import json
@@ -35,6 +37,14 @@ class MetadataToolConfig(FunctionBaseConfig, name="runway_metadata"):
 
 class TelemetryToolConfig(FunctionBaseConfig, name="runway_telemetry"):
     """Audience telemetry lookup for a show at a given hour."""
+
+
+class DesignersToolConfig(FunctionBaseConfig, name="runway_designers"):
+    """Fashion designer knowledge-base search."""
+
+
+class MetGalaToolConfig(FunctionBaseConfig, name="runway_met_gala"):
+    """Met Gala theme lookup by year or full history."""
 
 
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
@@ -105,4 +115,41 @@ async def _register_telemetry(_config: TelemetryToolConfig, _builder: Builder):
     yield FunctionInfo.from_fn(
         fn,
         description="Return viewership demographic data for an asset at a given ISO-8601 hour.",
+    )
+
+
+@register_function(config_type=DesignersToolConfig)
+async def _register_designers(_config: DesignersToolConfig, _builder: Builder):
+    from tools import search_fashion_designers
+
+    async def fn(query: str) -> str:
+        result = search_fashion_designers(query)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Search the fashion designer knowledge base. "
+            "Pass a name, house, hallmark keyword, nationality, or era "
+            "(e.g. 'Chanel', 'leather', '1960s', 'Japanese'). "
+            "Returns matching designer profiles including career history and hallmarks."
+        ),
+    )
+
+
+@register_function(config_type=MetGalaToolConfig)
+async def _register_met_gala(_config: MetGalaToolConfig, _builder: Builder):
+    from tools import get_met_gala_themes
+
+    async def fn(year: int = 0) -> str:
+        result = get_met_gala_themes(year if year else None)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Return Met Gala Costume Institute theme records from 1973 to 2025. "
+            "Pass a specific year (e.g. 2024) for a single entry, "
+            "or 0 to retrieve the full history."
+        ),
     )

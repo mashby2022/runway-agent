@@ -121,6 +121,48 @@ def lookup_content_metadata(content_id: str) -> dict:
     return {"error": f"Content '{content_id}' not found in catalog."}
 
 
+def search_fashion_designers(query: str) -> list[dict]:
+    """Search the fashion designer knowledge base by name, house, hallmark, or era.
+
+    Args:
+        query: Free-text search term (e.g. 'Chanel', 'leather', '1960s', 'French').
+
+    Returns:
+        List of matching designer dicts, or an empty list if none found.
+    """
+    try:
+        designers: list[dict] = _load_json("data/designers.json")
+    except FileNotFoundError:
+        return [{"error": "data/designers.json not found."}]
+
+    q = query.lower()
+    results = []
+    for d in designers:
+        searchable = " ".join(str(v) for v in d.values()).lower()
+        if q in searchable:
+            results.append(d)
+    return results
+
+
+def get_met_gala_themes(year: int | None = None) -> list[dict]:
+    """Return Met Gala theme records.
+
+    Args:
+        year: Optional specific year (e.g. 2024). If None or 0, returns all years.
+
+    Returns:
+        List of theme dicts with year, theme, and optional notes.
+    """
+    try:
+        themes: list[dict] = _load_json("data/met_gala_themes.json")
+    except FileNotFoundError:
+        return [{"error": "data/met_gala_themes.json not found."}]
+
+    if year:
+        return [t for t in themes if t.get("year") == year]
+    return themes
+
+
 def get_audience_telemetry(content_id: str, current_time: str) -> list[dict]:
     """Return viewership demographic data for an asset at a given hour.
 

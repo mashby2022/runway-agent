@@ -1,3 +1,16 @@
+front_end:
+  _type: fastapi
+  host: localhost
+  port: 8080
+  cors:
+    allow_origins:
+      - "*"
+    allow_methods:
+      - "*"
+    allow_headers:
+      - "*"
+    allow_credentials: false
+
 llms:
   miranda_llm:
     _type: nim
@@ -17,6 +30,12 @@ functions:
   telemetry_tool:
     _type: runway_telemetry
 
+  designers_tool:
+    _type: runway_designers
+
+  met_gala_tool:
+    _type: runway_met_gala
+
 workflow:
   _type: tool_calling_agent
   llm_name: miranda_llm
@@ -25,6 +44,8 @@ workflow:
     - schedule_tool
     - metadata_tool
     - telemetry_tool
+    - designers_tool
+    - met_gala_tool
   system_prompt: |
     Today's date is 2026-04-20. All timestamps must use the format
     2026-04-20THH:MM:SS+00:00 (UTC). Content IDs use the format s0001, s0002, etc.
