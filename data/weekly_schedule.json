@@ -1,0 +1,935 @@
+{
+  "_meta": {
+    "generated_by": "generate_weekly_insights.py",
+    "version": "1.0",
+    "week_start": "2026-04-20",
+    "sunday_date": "2026-04-19",
+    "note": "daily_themes defines the editorial strategy per day. weekly_plan (the actual slot grid) is populated by the generate_weekly_plan NAT tool."
+  },
+  "daily_themes": {
+    "Sunday": {
+      "theme": "Heritage Weekend",
+      "tribe": "Heritage Couture",
+      "peak_demo": "Silver_Stylists",
+      "secondary_demo": "Female",
+      "location_bias": "Affluent Suburban",
+      "age_focus": "50+",
+      "markets": [
+        "Dallas (DMA 4)",
+        "Atlanta (DMA 6)",
+        "New York (DMA 1)"
+      ],
+      "genre_keywords": [
+        "drama",
+        "classic",
+        "period",
+        "costume",
+        "historical",
+        "literary"
+      ],
+      "description_keywords": [
+        "elegant",
+        "timeless",
+        "heritage",
+        "tradition",
+        "legacy",
+        "couture",
+        "dynasty",
+        "aristocrat"
+      ],
+      "ds_rationale": "Heritage Weekend opens Sunday with appointment viewing for our most loyal Silver Stylist audience. Affluent Suburban completion rates peak Sunday 16:00\u201322:00 \u2014 Heritage Couture titles command the premium ad inventory. The stylistic arc of the week concludes here, giving the audience the editorial gravitas they came for. That is all."
+    },
+    "Monday": {
+      "theme": "Minimalist Monday",
+      "tribe": "Minimalist",
+      "peak_demo": "Female",
+      "secondary_demo": "LGBT+",
+      "location_bias": "Urban Core",
+      "age_focus": "25-34",
+      "markets": [
+        "New York (DMA 1)",
+        "Chicago (DMA 3)"
+      ],
+      "genre_keywords": [
+        "drama",
+        "independent",
+        "art",
+        "documentary",
+        "design"
+      ],
+      "description_keywords": [
+        "clean",
+        "restrained",
+        "modern",
+        "minimal",
+        "architecture",
+        "contemporary",
+        "urban",
+        "spare"
+      ],
+      "ds_rationale": "Monday mornings demand editorial restraint. Our Urban Core Female audience in New York and Chicago arrives ready for the week \u2014 Minimalist titles set the tone without demanding too much. Completion rates for clean, high-concept content spike 28% in the 08:00\u201312:00 NYC window on Mondays. This is not background television. This is the new black."
+    },
+    "Tuesday": {
+      "theme": "Romantic Tuesday",
+      "tribe": "Romantic Feminine",
+      "peak_demo": "Female",
+      "secondary_demo": "Millennial",
+      "location_bias": "Exurban",
+      "age_focus": "25-34",
+      "markets": [
+        "Atlanta (DMA 6)",
+        "Dallas (DMA 4)"
+      ],
+      "genre_keywords": [
+        "romance",
+        "drama",
+        "romantic",
+        "love",
+        "relationship"
+      ],
+      "description_keywords": [
+        "love",
+        "passion",
+        "heart",
+        "feminine",
+        "romantic",
+        "sensual",
+        "desire",
+        "longing"
+      ],
+      "ds_rationale": "Tuesday's Romantic Feminine programming anchors our Exurban Millennial Female audience. Mid-week dwell time for this segment peaks Tuesday evening \u2014 emotionally resonant cinema keeps completion rates above 0.70. Atlanta and Dallas Exurban markets lead this tribe's engagement curve."
+    },
+    "Wednesday": {
+      "theme": "Avant-Garde Wednesday",
+      "tribe": "Avant-Garde",
+      "peak_demo": "Gen_Z",
+      "secondary_demo": "LGBT+",
+      "location_bias": "Urban Core",
+      "age_focus": "18-24",
+      "markets": [
+        "New York (DMA 1)",
+        "Los Angeles (DMA 2)"
+      ],
+      "genre_keywords": [
+        "experimental",
+        "art",
+        "indie",
+        "avant-garde",
+        "surreal",
+        "conceptual"
+      ],
+      "description_keywords": [
+        "bold",
+        "experimental",
+        "boundary",
+        "subvert",
+        "provocative",
+        "artistic",
+        "visionary",
+        "transgressive"
+      ],
+      "ds_rationale": "Wednesday is our mid-week Vanguard spike. Gen Z and LGBT+ audiences in NYC and LA engage most intensely on Wednesday evenings \u2014 this is where the algorithm leans into the uncomfortable and the extraordinary. Avant-Garde titles here consistently deliver our highest 18-24 completion rates of the week. The audience is dressed and ready. That is all."
+    },
+    "Thursday": {
+      "theme": "Global Couture Thursday",
+      "tribe": "Heritage Couture",
+      "peak_demo": "Female",
+      "secondary_demo": "Silver_Stylists",
+      "location_bias": "Affluent Suburban",
+      "age_focus": "35-49",
+      "markets": [
+        "New York (DMA 1)",
+        "Dallas (DMA 4)"
+      ],
+      "genre_keywords": [
+        "fashion",
+        "couture",
+        "documentary",
+        "biography",
+        "luxury"
+      ],
+      "description_keywords": [
+        "designer",
+        "fashion",
+        "couture",
+        "luxury",
+        "house",
+        "atelier",
+        "collection",
+        "masterpiece"
+      ],
+      "ds_rationale": "Thursday bridges Avant-Garde Wednesday into Heritage Weekend. Heritage Couture documentaries and biopics prime the 35-49 Female and Silver Stylist audiences for the weekend's premium programming. The Cond\u00e9 Nast Accelerated Intelligence Layer identifies Thursday 16:00\u201320:00 as the highest-value interstitial window for fashion brand integrations across all Affluent Suburban markets."
+    },
+    "Friday": {
+      "theme": "Street & Youth Friday",
+      "tribe": "Street & Youth",
+      "peak_demo": "Gen_Z",
+      "secondary_demo": "Millennial",
+      "location_bias": "Urban Core",
+      "age_focus": "18-24",
+      "markets": [
+        "Los Angeles (DMA 2)",
+        "Chicago (DMA 3)"
+      ],
+      "genre_keywords": [
+        "youth",
+        "street",
+        "hip-hop",
+        "music",
+        "subculture"
+      ],
+      "description_keywords": [
+        "street",
+        "youth",
+        "urban",
+        "culture",
+        "rebel",
+        "generation",
+        "identity",
+        "movement"
+      ],
+      "ds_rationale": "Friday pre-weekend energy belongs to our youngest audience. Street & Youth titles drive the highest Gen Z engagement on Friday evenings \u2014 LA and Chicago Urban Core markets outperform all others in this slot. An unexpected accessory that steals the whole look."
+    },
+    "Saturday": {
+      "theme": "Heritage Weekend",
+      "tribe": "Heritage Couture",
+      "peak_demo": "Silver_Stylists",
+      "secondary_demo": "Female",
+      "location_bias": "Affluent Suburban",
+      "age_focus": "50+",
+      "markets": [
+        "Dallas (DMA 4)",
+        "Atlanta (DMA 6)",
+        "New York (DMA 1)"
+      ],
+      "genre_keywords": [
+        "drama",
+        "classic",
+        "period",
+        "costume",
+        "historical",
+        "literary"
+      ],
+      "description_keywords": [
+        "elegant",
+        "timeless",
+        "heritage",
+        "tradition",
+        "legacy",
+        "couture",
+        "dynasty",
+        "aristocrat"
+      ],
+      "ds_rationale": "Heritage Weekend opens Saturday with the season's premium offering for our Silver Stylist audience. Affluent Suburban completion rates peak Saturday 14:00\u201320:00 \u2014 Heritage Couture titles anchor the highest CPM ad inventory of the week. Nothing unravels here. That is all."
+    }
+  },
+  "weekly_plan": [
+    {
+      "date": "2026-04-19",
+      "day_of_week": "Sunday",
+      "theme": "Heritage Weekend",
+      "tribe": "Heritage Couture",
+      "peak_demo": "Silver_Stylists",
+      "location_bias": "Affluent Suburban",
+      "markets": [
+        "Dallas (DMA 4)",
+        "Atlanta (DMA 6)",
+        "New York (DMA 1)"
+      ],
+      "ds_rationale": "Heritage Weekend opens Sunday with appointment viewing for our most loyal Silver Stylist audience. Affluent Suburban completion rates peak Sunday 16:00\u201322:00 \u2014 Heritage Couture titles command the premium ad inventory. The stylistic arc of the week concludes here, giving the audience the editorial gravitas they came for. That is all.",
+      "slot_count": 8,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0360",
+          "title": "The Royal Tailor",
+          "runtime_min": 127,
+          "block_duration_min": 150,
+          "interstitial_min": 23,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "10:30",
+          "show_id": "s0060",
+          "title": "House of Gucci",
+          "runtime_min": 158,
+          "block_duration_min": 180,
+          "interstitial_min": 22,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "13:30",
+          "show_id": "s0197",
+          "title": "Mrs. Harris Goes to Paris",
+          "runtime_min": 116,
+          "block_duration_min": 120,
+          "interstitial_min": 4,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "15:30",
+          "show_id": "s0407",
+          "title": "Fashions of 1934",
+          "runtime_min": 78,
+          "block_duration_min": 90,
+          "interstitial_min": 12,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "17:00",
+          "show_id": "s0431",
+          "title": "All the Sins of Sodom",
+          "runtime_min": 88,
+          "block_duration_min": 90,
+          "interstitial_min": 2,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "18:30",
+          "show_id": "s0514",
+          "title": "Neneh Superstar",
+          "runtime_min": 95,
+          "block_duration_min": 120,
+          "interstitial_min": 25,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "20:30",
+          "show_id": "s0738",
+          "title": "Working Girls",
+          "runtime_min": 110,
+          "block_duration_min": 120,
+          "interstitial_min": 10,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "22:30",
+          "show_id": "s1266",
+          "title": "Working Girl",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-20",
+      "day_of_week": "Monday",
+      "theme": "Minimalist Monday",
+      "tribe": "Minimalist",
+      "peak_demo": "Female",
+      "location_bias": "Urban Core",
+      "markets": [
+        "New York (DMA 1)",
+        "Chicago (DMA 3)"
+      ],
+      "ds_rationale": "Monday mornings demand editorial restraint. Our Urban Core Female audience in New York and Chicago arrives ready for the week \u2014 Minimalist titles set the tone without demanding too much. Completion rates for clean, high-concept content spike 28% in the 08:00\u201312:00 NYC window on Mondays. This is not background television. This is the new black.",
+      "slot_count": 9,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0227",
+          "title": "Helvetica",
+          "runtime_min": 80,
+          "block_duration_min": 90,
+          "interstitial_min": 10,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "09:30",
+          "show_id": "s0465",
+          "title": "Dries",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "11:00",
+          "show_id": "s1227",
+          "title": "Teague: Design & Beauty",
+          "runtime_min": 88,
+          "block_duration_min": 90,
+          "interstitial_min": 2,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "12:30",
+          "show_id": "s0147",
+          "title": "Persuasion",
+          "runtime_min": 108,
+          "block_duration_min": 120,
+          "interstitial_min": 12,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "14:30",
+          "show_id": "s0279",
+          "title": "Sick of Myself",
+          "runtime_min": 97,
+          "block_duration_min": 120,
+          "interstitial_min": 23,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "16:30",
+          "show_id": "s0335",
+          "title": "Wonder Boy",
+          "runtime_min": 99,
+          "block_duration_min": 120,
+          "interstitial_min": 21,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "18:30",
+          "show_id": "s0350",
+          "title": "L'Amour Fou",
+          "runtime_min": 98,
+          "block_duration_min": 120,
+          "interstitial_min": 22,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "20:30",
+          "show_id": "s0403",
+          "title": "If the Shoe Fits",
+          "runtime_min": 86,
+          "block_duration_min": 90,
+          "interstitial_min": 4,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        },
+        {
+          "time": "22:00",
+          "show_id": "s0428",
+          "title": "Halston",
+          "runtime_min": 105,
+          "block_duration_min": 120,
+          "interstitial_min": 15,
+          "tribe": "Minimalist",
+          "target_age": "25-34"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-21",
+      "day_of_week": "Tuesday",
+      "theme": "Romantic Tuesday",
+      "tribe": "Romantic Feminine",
+      "peak_demo": "Female",
+      "location_bias": "Exurban",
+      "markets": [
+        "Atlanta (DMA 6)",
+        "Dallas (DMA 4)"
+      ],
+      "ds_rationale": "Tuesday's Romantic Feminine programming anchors our Exurban Millennial Female audience. Mid-week dwell time for this segment peaks Tuesday evening \u2014 emotionally resonant cinema keeps completion rates above 0.70. Atlanta and Dallas Exurban markets lead this tribe's engagement curve.",
+      "slot_count": 7,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0183",
+          "title": "Who You Think I Am",
+          "runtime_min": 102,
+          "block_duration_min": 120,
+          "interstitial_min": 18,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        },
+        {
+          "time": "10:00",
+          "show_id": "s0538",
+          "title": "Making of a Male Model",
+          "runtime_min": 100,
+          "block_duration_min": 120,
+          "interstitial_min": 20,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        },
+        {
+          "time": "12:00",
+          "show_id": "s0257",
+          "title": "How Stella Got Her Groove Back",
+          "runtime_min": 124,
+          "block_duration_min": 150,
+          "interstitial_min": 26,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        },
+        {
+          "time": "14:30",
+          "show_id": "s0344",
+          "title": "Valentino: The Last Emperor",
+          "runtime_min": 96,
+          "block_duration_min": 120,
+          "interstitial_min": 24,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        },
+        {
+          "time": "16:30",
+          "show_id": "s0440",
+          "title": "Fall",
+          "runtime_min": 93,
+          "block_duration_min": 120,
+          "interstitial_min": 27,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        },
+        {
+          "time": "18:30",
+          "show_id": "s0075",
+          "title": "Sex and the City",
+          "runtime_min": 145,
+          "block_duration_min": 150,
+          "interstitial_min": 5,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        },
+        {
+          "time": "21:00",
+          "show_id": "s0071",
+          "title": "Eat Pray Love",
+          "runtime_min": 133,
+          "block_duration_min": 150,
+          "interstitial_min": 17,
+          "tribe": "Romantic Feminine",
+          "target_age": "25-34"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-22",
+      "day_of_week": "Wednesday",
+      "theme": "Avant-Garde Wednesday",
+      "tribe": "Avant-Garde",
+      "peak_demo": "Gen_Z",
+      "location_bias": "Urban Core",
+      "markets": [
+        "New York (DMA 1)",
+        "Los Angeles (DMA 2)"
+      ],
+      "ds_rationale": "Wednesday is our mid-week Vanguard spike. Gen Z and LGBT+ audiences in NYC and LA engage most intensely on Wednesday evenings \u2014 this is where the algorithm leans into the uncomfortable and the extraordinary. Avant-Garde titles here consistently deliver our highest 18-24 completion rates of the week. The audience is dressed and ready. That is all.",
+      "slot_count": 9,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0991",
+          "title": "Aetherrise",
+          "runtime_min": 100,
+          "block_duration_min": 120,
+          "interstitial_min": 20,
+          "tribe": "Avant-Garde",
+          "target_age": "25-34"
+        },
+        {
+          "time": "12:00",
+          "show_id": "s0335",
+          "title": "Wonder Boy",
+          "runtime_min": 99,
+          "block_duration_min": 120,
+          "interstitial_min": 21,
+          "tribe": "Avant-Garde",
+          "target_age": "25-34"
+        },
+        {
+          "time": "14:00",
+          "show_id": "s0389",
+          "title": "Annie Leibovitz: Life Through a Lens",
+          "runtime_min": 83,
+          "block_duration_min": 90,
+          "interstitial_min": 7,
+          "tribe": "Avant-Garde",
+          "target_age": "35-49"
+        },
+        {
+          "time": "15:30",
+          "show_id": "s0554",
+          "title": "Martin Margiela: In His Own Words",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Avant-Garde",
+          "target_age": "25-34"
+        },
+        {
+          "time": "17:00",
+          "show_id": "s0666",
+          "title": "Comrade Couture",
+          "runtime_min": 84,
+          "block_duration_min": 90,
+          "interstitial_min": 6,
+          "tribe": "Avant-Garde",
+          "target_age": "25-34"
+        },
+        {
+          "time": "18:30",
+          "show_id": "s0852",
+          "title": "A Time Apart",
+          "runtime_min": 75,
+          "block_duration_min": 90,
+          "interstitial_min": 15,
+          "tribe": "Avant-Garde",
+          "target_age": "25-34"
+        },
+        {
+          "time": "20:00",
+          "show_id": "s1140",
+          "title": "The Oral Generation",
+          "runtime_min": 65,
+          "block_duration_min": 90,
+          "interstitial_min": 25,
+          "tribe": "Avant-Garde",
+          "target_age": "25-34"
+        },
+        {
+          "time": "21:30",
+          "show_id": "s0134",
+          "title": "Children Who Chase Lost Voices",
+          "runtime_min": 116,
+          "block_duration_min": 120,
+          "interstitial_min": 4,
+          "tribe": "Avant-Garde",
+          "target_age": "18-24"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-23",
+      "day_of_week": "Thursday",
+      "theme": "Global Couture Thursday",
+      "tribe": "Heritage Couture",
+      "peak_demo": "Female",
+      "location_bias": "Affluent Suburban",
+      "markets": [
+        "New York (DMA 1)",
+        "Dallas (DMA 4)"
+      ],
+      "ds_rationale": "Thursday bridges Avant-Garde Wednesday into Heritage Weekend. Heritage Couture documentaries and biopics prime the 35-49 Female and Silver Stylist audiences for the weekend's premium programming. The Cond\u00e9 Nast Accelerated Intelligence Layer identifies Thursday 16:00\u201320:00 as the highest-value interstitial window for fashion brand integrations across all Affluent Suburban markets.",
+      "slot_count": 9,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0759",
+          "title": "Inside The Dream: Mugler",
+          "runtime_min": 62,
+          "block_duration_min": 90,
+          "interstitial_min": 28,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "09:30",
+          "show_id": "s0350",
+          "title": "L'Amour Fou",
+          "runtime_min": 98,
+          "block_duration_min": 120,
+          "interstitial_min": 22,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "11:30",
+          "show_id": "s0666",
+          "title": "Comrade Couture",
+          "runtime_min": 84,
+          "block_duration_min": 90,
+          "interstitial_min": 6,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "13:00",
+          "show_id": "s0417",
+          "title": "Unzipped",
+          "runtime_min": 73,
+          "block_duration_min": 90,
+          "interstitial_min": 17,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "14:30",
+          "show_id": "s0503",
+          "title": "The Tents",
+          "runtime_min": 89,
+          "block_duration_min": 90,
+          "interstitial_min": 1,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "16:00",
+          "show_id": "s0554",
+          "title": "Martin Margiela: In His Own Words",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "17:30",
+          "show_id": "s1181",
+          "title": "L'Arp\u00e8te",
+          "runtime_min": 107,
+          "block_duration_min": 120,
+          "interstitial_min": 13,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "19:30",
+          "show_id": "s0545",
+          "title": "Jean Paul Gaultier: Freak & Chic",
+          "runtime_min": 96,
+          "block_duration_min": 120,
+          "interstitial_min": 24,
+          "tribe": "Heritage Couture",
+          "target_age": "35-49"
+        },
+        {
+          "time": "21:30",
+          "show_id": "s0127",
+          "title": "Barbie: A Fashion Fairytale",
+          "runtime_min": 79,
+          "block_duration_min": 90,
+          "interstitial_min": 11,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-24",
+      "day_of_week": "Friday",
+      "theme": "Street & Youth Friday",
+      "tribe": "Street & Youth",
+      "peak_demo": "Gen_Z",
+      "location_bias": "Urban Core",
+      "markets": [
+        "Los Angeles (DMA 2)",
+        "Chicago (DMA 3)"
+      ],
+      "ds_rationale": "Friday pre-weekend energy belongs to our youngest audience. Street & Youth titles drive the highest Gen Z engagement on Friday evenings \u2014 LA and Chicago Urban Core markets outperform all others in this slot. An unexpected accessory that steals the whole look.",
+      "slot_count": 9,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0663",
+          "title": "Riveted: The History of Jeans",
+          "runtime_min": 60,
+          "block_duration_min": 60,
+          "interstitial_min": 0,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "09:00",
+          "show_id": "s0728",
+          "title": "Days on Designers",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "10:30",
+          "show_id": "s0798",
+          "title": "Class Acts",
+          "runtime_min": 74,
+          "block_duration_min": 90,
+          "interstitial_min": 16,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "12:00",
+          "show_id": "s1192",
+          "title": "Sugar Coated",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "13:30",
+          "show_id": "s0084",
+          "title": "La Vie en Rose",
+          "runtime_min": 140,
+          "block_duration_min": 150,
+          "interstitial_min": 10,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "16:00",
+          "show_id": "s0496",
+          "title": "Camorra (A Story of Streets, Women and Crime)",
+          "runtime_min": 115,
+          "block_duration_min": 120,
+          "interstitial_min": 5,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "18:00",
+          "show_id": "s0209",
+          "title": "Heavy Metal 2000",
+          "runtime_min": 88,
+          "block_duration_min": 90,
+          "interstitial_min": 2,
+          "tribe": "Street & Youth",
+          "target_age": "18-24"
+        },
+        {
+          "time": "19:30",
+          "show_id": "s0051",
+          "title": "As Above, So Below",
+          "runtime_min": 93,
+          "block_duration_min": 120,
+          "interstitial_min": 27,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        },
+        {
+          "time": "21:30",
+          "show_id": "s0062",
+          "title": "Hustlers",
+          "runtime_min": 110,
+          "block_duration_min": 120,
+          "interstitial_min": 10,
+          "tribe": "Street & Youth",
+          "target_age": "25-34"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-25",
+      "day_of_week": "Saturday",
+      "theme": "Heritage Weekend",
+      "tribe": "Heritage Couture",
+      "peak_demo": "Silver_Stylists",
+      "location_bias": "Affluent Suburban",
+      "markets": [
+        "Dallas (DMA 4)",
+        "Atlanta (DMA 6)",
+        "New York (DMA 1)"
+      ],
+      "ds_rationale": "Heritage Weekend opens Saturday with the season's premium offering for our Silver Stylist audience. Affluent Suburban completion rates peak Saturday 14:00\u201320:00 \u2014 Heritage Couture titles anchor the highest CPM ad inventory of the week. Nothing unravels here. That is all.",
+      "slot_count": 8,
+      "slots": [
+        {
+          "time": "08:00",
+          "show_id": "s0360",
+          "title": "The Royal Tailor",
+          "runtime_min": 127,
+          "block_duration_min": 150,
+          "interstitial_min": 23,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "10:00",
+          "show_id": "s0421",
+          "title": "Charlotte",
+          "runtime_min": 92,
+          "block_duration_min": 120,
+          "interstitial_min": 28,
+          "tribe": "Avant-Garde",
+          "target_age": "18-24"
+        },
+        {
+          "time": "10:30",
+          "show_id": "s0060",
+          "title": "House of Gucci",
+          "runtime_min": 158,
+          "block_duration_min": 180,
+          "interstitial_min": 22,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "13:30",
+          "show_id": "s0197",
+          "title": "Mrs. Harris Goes to Paris",
+          "runtime_min": 116,
+          "block_duration_min": 120,
+          "interstitial_min": 4,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "15:30",
+          "show_id": "s0407",
+          "title": "Fashions of 1934",
+          "runtime_min": 78,
+          "block_duration_min": 90,
+          "interstitial_min": 12,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "17:00",
+          "show_id": "s0431",
+          "title": "All the Sins of Sodom",
+          "runtime_min": 88,
+          "block_duration_min": 90,
+          "interstitial_min": 2,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "18:30",
+          "show_id": "s0514",
+          "title": "Neneh Superstar",
+          "runtime_min": 95,
+          "block_duration_min": 120,
+          "interstitial_min": 25,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "20:30",
+          "show_id": "s0738",
+          "title": "Working Girls",
+          "runtime_min": 110,
+          "block_duration_min": 120,
+          "interstitial_min": 10,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        },
+        {
+          "time": "22:30",
+          "show_id": "s1266",
+          "title": "Working Girl",
+          "runtime_min": 90,
+          "block_duration_min": 90,
+          "interstitial_min": 0,
+          "tribe": "Heritage Couture",
+          "target_age": "25-34"
+        }
+      ]
+    }
+  ],
+  "week_start": "2026-04-20",
+  "_last_generated": "2026-04-22T00:46:33+00:00",
+  "_last_updated": "2026-04-22T00:46:33+00:00"
+}

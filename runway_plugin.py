@@ -67,6 +67,26 @@ class ToggleModeToolConfig(FunctionBaseConfig, name="runway_toggle_mode"):
     """Switch pipeline execution between ONLINE (GPU) and OFFLINE (CPU mock) modes."""
 
 
+class MovieCatalogToolConfig(FunctionBaseConfig, name="runway_movie_catalog"):
+    """Return the full dropdown-ready movie catalog with show_id, title, genres, runtime."""
+
+
+class GenerateCandidatesToolConfig(FunctionBaseConfig, name="runway_generate_candidates"):
+    """RAPIDS-first recommender: top-5 Female/LGBT+ candidates by tribe + engagement."""
+
+
+class SystemHealthToolConfig(FunctionBaseConfig, name="runway_system_health"):
+    """Heartbeat tool — returns full compute performance metadata for the dashboard."""
+
+
+class GenerateWeeklyPlanToolConfig(FunctionBaseConfig, name="runway_generate_weekly_plan"):
+    """Generate a 7-day programming grid aligned to Daily Strategic Themes."""
+
+
+class UpdateWeeklySlotToolConfig(FunctionBaseConfig, name="runway_update_weekly_slot"):
+    """Move a title between weekly slots with demographic friction validation."""
+
+
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
 # FunctionInfo.from_fn requires exactly one parameter; use Pydantic models
 # for tools that originally took two arguments.
@@ -84,6 +104,28 @@ class UpdateScheduleQuery(BaseModel):
 class TelemetryQuery(BaseModel):
     content_id: str = Field(description="Show identifier, e.g. 's0001'")
     current_time: str = Field(description="ISO-8601 timestamp used to select the time window")
+    demographic: str = Field(default="", description="Optional segment — 'Female', 'LGBT+', 'Gen_Z', 'Millennial', 'Male'. Defaults to core Female+LGBTQ+.")
+
+
+class GenerateCandidatesQuery(BaseModel):
+    context_tribe: str = Field(default="", description="Style Tribe name or keyword, e.g. 'Heritage Couture'. Leave blank for all tribes.")
+    demographic: str = Field(default="", description="Target segment — 'Female', 'LGBT+', 'Gen_Z', 'Millennial', 'Silver_Stylists', 'Male'. Defaults to Female+LGBTQ+ core.")
+    location_segment: str = Field(default="", description="DMA market — 'New York (DMA 1)', 'Dallas (DMA 4)', 'Paris', 'Europe', etc. Leave blank for all markets.")
+    density_tier: str = Field(default="", description="'Urban Core', 'Affluent Suburban', or 'Exurban'. Affluent Suburban applies a Heritage Couture bias.")
+
+
+class GenerateWeeklyPlanQuery(BaseModel):
+    week_start: str = Field(
+        default="",
+        description="ISO date for the week's Monday, e.g. '2026-04-20'. Leave blank to use the current project week.",
+    )
+
+
+class UpdateWeeklySlotQuery(BaseModel):
+    from_day: str = Field(description="Source day name, e.g. 'Monday'")
+    from_time: str = Field(description="Source slot time HH:MM, e.g. '20:00'")
+    to_day: str = Field(description="Target day name, e.g. 'Wednesday'")
+    to_time: str = Field(description="Target slot time HH:MM, e.g. '20:00'")
 
 
 # ── Function registrations ───────────────────────────────────────────────────
@@ -134,12 +176,18 @@ async def _register_telemetry(_config: TelemetryToolConfig, _builder: Builder):
     from tools import get_audience_telemetry
 
     async def fn(query: TelemetryQuery) -> str:
-        result = get_audience_telemetry(query.content_id, query.current_time)
+        result = get_audience_telemetry(query.content_id, query.current_time, query.demographic)
         return json.dumps(result)
 
     yield FunctionInfo.from_fn(
         fn,
-        description="Return viewership demographic data for an asset at a given ISO-8601 hour.",
+        description=(
+            "Return viewership data for an asset at a given ISO-8601 hour. "
+            "Always returns Female and LGBTQ+ core segment stats. "
+            "Optionally pass a demographic ('Gen_Z', 'Millennial', 'Male') "
+            "to get that segment alongside the core for comparison. "
+            "Response includes top_performing_market (DMA with highest completion rate)."
+        ),
     )
 
 
@@ -253,5 +301,119 @@ async def _register_update_schedule(_config: UpdateScheduleToolConfig, _builder:
             "Automatically looks up the replacement film's runtime, recalculates the "
             "block_duration_min (nearest 30-min boundary), and updates interstitial padding. "
             "Pass slot_time as ISO-8601 or HH:MM (e.g. '16:00'), and new_title as the film name."
+        ),
+    )
+
+
+@register_function(config_type=MovieCatalogToolConfig)
+async def _register_movie_catalog(_config: MovieCatalogToolConfig, _builder: Builder):
+    from tools import get_movie_catalog
+
+    async def fn(channel_id: str = "ch_runway_01") -> str:  # noqa: ARG001
+        result = get_movie_catalog()
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Return the full movie catalog as a clean, dropdown-ready list. "
+            "Each entry has show_id, title, genres, and runtime_min. "
+            "Use this to populate UI dropdowns or to check available titles before "
+            "making scheduling decisions."
+        ),
+    )
+
+
+@register_function(config_type=GenerateCandidatesToolConfig)
+async def _register_generate_candidates(_config: GenerateCandidatesToolConfig, _builder: Builder):
+    from tools import generate_candidates
+
+    async def fn(query: GenerateCandidatesQuery) -> str:
+        result = generate_candidates(query.context_tribe, query.demographic, query.location_segment, query.density_tier)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Condé Nast Accelerated Intelligence Layer — RAPIDS-first recommender. "
+            "Accepts context_tribe (Style Tribe), demographic ('Female','LGBT+','Gen_Z',"
+            "'Millennial','Male'), and location_segment (DMA market or region like 'Paris',"
+            "'New York','Europe'). Defaults to Female+LGBTQ+ core across all markets. "
+            "OFFLINE: pandas with European fashion title boost for EU markets. "
+            "ONLINE: cuDF + co-visitation scoring. "
+            "Always call before making a scheduling recommendation."
+        ),
+    )
+
+
+@register_function(config_type=SystemHealthToolConfig)
+async def _register_system_health(_config: SystemHealthToolConfig, _builder: Builder):
+    from tools import get_system_health
+
+    async def fn(channel_id: str = "ch_runway_01") -> str:  # noqa: ARG001
+        result = get_system_health()
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Heartbeat tool — returns the current compute performance metadata: "
+            "execution_mode (ONLINE/OFFLINE), source_compute, engine name, "
+            "gpu_boost factor, latency_ms, and HAS_GPU detection. "
+            "Use this when the user asks about system status, compute mode, "
+            "or which engine is currently active."
+        ),
+    )
+
+
+@register_function(config_type=GenerateWeeklyPlanToolConfig)
+async def _register_generate_weekly_plan(
+    _config: GenerateWeeklyPlanToolConfig, _builder: Builder
+):
+    from tools import generate_weekly_plan
+
+    async def fn(query: GenerateWeeklyPlanQuery) -> str:
+        result = generate_weekly_plan(query.week_start)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Weekly Architect tool — generates a 7-day programming grid (08:00–00:00) "
+            "aligned to Daily Strategic Themes (Minimalist Monday, Avant-Garde Wednesday, "
+            "Heritage Weekend, etc.). "
+            "OFFLINE: matches catalog titles to themes by genre/description keyword alignment "
+            "and average completion rate. "
+            "ONLINE: uses cuDF to rank by market-specific completion rate per day's peak demo. "
+            "Persists the plan to data/weekly_schedule.json. "
+            "Call generate_weekly_insights.py first to seed the daily_themes data. "
+            "Pass week_start as ISO date (e.g. '2026-04-20') or leave blank for current week."
+        ),
+    )
+
+
+@register_function(config_type=UpdateWeeklySlotToolConfig)
+async def _register_update_weekly_slot(
+    _config: UpdateWeeklySlotToolConfig, _builder: Builder
+):
+    from tools import update_weekly_slot
+
+    async def fn(query: UpdateWeeklySlotQuery) -> str:
+        result = update_weekly_slot(
+            query.from_day, query.from_time, query.to_day, query.to_time
+        )
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Move a title from one day/time slot to another in the weekly schedule. "
+            "Performs a swap if a title already occupies the target slot; otherwise moves "
+            "the title to the empty position. "
+            "Validates the move against Demographic Friction Rules: if an 18-24 title is "
+            "moved to Heritage Weekend, or a 50+ title to Avant-Garde Wednesday or Street & "
+            "Youth Friday, a strategic_warning is returned alongside the completed move. "
+            "Pass from_day/to_day as day names (e.g. 'Monday') and from_time/to_time as "
+            "HH:MM strings (e.g. '20:00'). Requires an existing weekly plan."
         ),
     )

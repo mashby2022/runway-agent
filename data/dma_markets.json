@@ -1,0 +1,62 @@
+[
+  {
+    "dma_id": 1,
+    "market": "New York",
+    "region": "US-East",
+    "type": "domestic"
+  },
+  {
+    "dma_id": 2,
+    "market": "Los Angeles",
+    "region": "US-West",
+    "type": "domestic"
+  },
+  {
+    "dma_id": 3,
+    "market": "Chicago",
+    "region": "US-Midwest",
+    "type": "domestic"
+  },
+  {
+    "dma_id": 4,
+    "market": "Dallas",
+    "region": "US-South",
+    "type": "domestic"
+  },
+  {
+    "dma_id": 5,
+    "market": "San Francisco",
+    "region": "US-West",
+    "type": "domestic"
+  },
+  {
+    "dma_id": 6,
+    "market": "Paris",
+    "region": "Europe",
+    "type": "international"
+  },
+  {
+    "dma_id": 7,
+    "market": "London",
+    "region": "Europe",
+    "type": "international"
+  },
+  {
+    "dma_id": 8,
+    "market": "Milan",
+    "region": "Europe",
+    "type": "international"
+  },
+  {
+    "dma_id": 9,
+    "market": "Tokyo",
+    "region": "Asia-Pacific",
+    "type": "international"
+  },
+  {
+    "dma_id": 10,
+    "market": "S\u00e3o Paulo",
+    "region": "Latin America",
+    "type": "international"
+  }
+]
