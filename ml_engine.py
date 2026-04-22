@@ -43,6 +43,9 @@ except ImportError:
     from sklearn.neighbors import NearestNeighbors as _KNN
     print("⚠  cuML not available — scikit-learn CPU fallback active")
 
+# ── GPU_ACTIVE: unified flag consumed by tools.py for dynamic audit blocks ────
+GPU_ACTIVE: bool = GPU_PANDAS and CUML
+
 from sklearn.cluster import KMeans as _CpuKMeans       # always available for timing
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize

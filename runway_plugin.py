@@ -87,6 +87,10 @@ class UpdateWeeklySlotToolConfig(FunctionBaseConfig, name="runway_update_weekly_
     """Move a title between weekly slots with demographic friction validation."""
 
 
+class StrategicFrictionToolConfig(FunctionBaseConfig, name="runway_strategic_friction"):
+    """Pre-flight Event Exclusivity check — returns is_final_conflict before a slot move."""
+
+
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
 # FunctionInfo.from_fn requires exactly one parameter; use Pydantic models
 # for tools that originally took two arguments.
@@ -126,6 +130,11 @@ class UpdateWeeklySlotQuery(BaseModel):
     from_time: str = Field(description="Source slot time HH:MM, e.g. '20:00'")
     to_day: str = Field(description="Target day name, e.g. 'Wednesday'")
     to_time: str = Field(description="Target slot time HH:MM, e.g. '20:00'")
+
+
+class StrategicFrictionQuery(BaseModel):
+    title: str = Field(description="Title of the content to check, e.g. 'The First Monday in May'")
+    target_day: str = Field(description="Destination day name, e.g. 'Saturday'")
 
 
 # ── Function registrations ───────────────────────────────────────────────────
@@ -388,6 +397,30 @@ async def _register_generate_weekly_plan(
             "Persists the plan to data/weekly_schedule.json. "
             "Call generate_weekly_insights.py first to seed the daily_themes data. "
             "Pass week_start as ISO date (e.g. '2026-04-20') or leave blank for current week."
+        ),
+    )
+
+
+@register_function(config_type=StrategicFrictionToolConfig)
+async def _register_strategic_friction(
+    _config: StrategicFrictionToolConfig, _builder: Builder
+):
+    from tools import calculate_strategic_friction
+
+    async def fn(query: StrategicFrictionQuery) -> str:
+        result = calculate_strategic_friction(query.title, query.target_day)
+        return json.dumps(result)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Pre-flight Editorial Policy check. "
+            "Before moving any title between schedule slots, call this tool to verify "
+            "there is no Event Exclusivity conflict (Met Gala content must stay on "
+            "Avant-Garde Wednesday; PFW content must stay on Ready-to-Wear Saturday or "
+            "Global Couture Thursday). "
+            "If is_final_conflict is true, STOP — do not call update_weekly_slot_tool. "
+            "Deliver the strategic_warning verbatim as your final response."
         ),
     )
 

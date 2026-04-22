@@ -27,6 +27,8 @@ Run standalone:
 """
 
 import json
+import math
+import os as _os
 import os
 import random
 from datetime import datetime, timezone
@@ -69,13 +71,29 @@ CPM_BY_MARKET: dict[str, float] = {
 }
 CHANNEL_CPM = 45.0   # national blended rate for telemetry records (no DMA)
 
-# ── HUT — Households Using Television — by hour (US cable baseline) ──────────
+# ── HUT — Gaussian prime-time model (replaces flat lookup table) ──────────────
+# Bell curve centered at 20:30 (σ=1.8 h) layered over a daytime arch baseline.
+# Range: ~0.06 overnight → ~0.74 peak prime time.
+_HUT_PRIME_CENTER = 20.5
+_HUT_PRIME_SIGMA  = 1.8
+_HUT_DAY_CENTER   = 14.0
+_HUT_DAY_SIGMA    = 6.0
+
+def _gaussian_hut(hour: int) -> float:
+    """HUT with Gaussian prime-time spike + organic noise. Range 0.05–0.82."""
+    daytime = 0.10 + 0.30 * math.exp(-0.5 * ((hour - _HUT_DAY_CENTER) / _HUT_DAY_SIGMA) ** 2)
+    prime   = 0.44 * math.exp(-0.5 * ((hour - _HUT_PRIME_CENTER) / _HUT_PRIME_SIGMA) ** 2)
+    noise   = random.gauss(0.0, 0.012)
+    return round(max(0.05, min(0.82, daytime + prime + noise)), 4)
+
+# Legacy constant kept for nielsen_telemetry aggregation (deterministic lookup)
 HUT_BY_HOUR: dict[int, float] = {
-    0: 0.18, 1: 0.10, 2: 0.07, 3: 0.05, 4: 0.05, 5: 0.08,
-    6: 0.14, 7: 0.22, 8: 0.30, 9: 0.35, 10: 0.38, 11: 0.40,
-    12: 0.43, 13: 0.42, 14: 0.40, 15: 0.42, 16: 0.48,
-    17: 0.55, 18: 0.62, 19: 0.68, 20: 0.72, 21: 0.70,
-    22: 0.60, 23: 0.42,
+    h: round(
+        0.10 + 0.30 * math.exp(-0.5 * ((h - 14.0) / 6.0) ** 2)
+        + 0.44 * math.exp(-0.5 * ((h - 20.5) / 1.8) ** 2),
+        4,
+    )
+    for h in range(24)
 }
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -89,6 +107,18 @@ def _save(path: str, data) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
+
+
+def _save_parquet(json_path: str, records: list) -> str:
+    """Write a parallel .parquet file for DuckDB queries."""
+    try:
+        import pandas as pd
+        parquet_path = json_path.replace(".json", ".parquet")
+        pd.DataFrame(records).to_parquet(parquet_path, index=False)
+        return parquet_path
+    except Exception as exc:
+        print(f"  ⚠  Parquet write skipped: {exc}")
+        return ""
 
 
 def _get_hour(timestamp: str) -> int:
@@ -150,6 +180,25 @@ def _nielsen_block(audience: int, universe: int, hut: float, cpm: float) -> dict
     }
 
 
+# ── Nielsen noise helper ──────────────────────────────────────────────────────
+
+def _apply_nielsen_noise(block: dict) -> dict:
+    """Add multiplicative Gaussian noise to Rating_Pct and Share_Pct.
+
+    Produces organic decimals (e.g. 1.42 %, 2.17 %) rather than clean values.
+    GRPs, Reach_Pct, CPP are recalculated to remain internally consistent.
+    """
+    r_noise = random.gauss(1.0, 0.09)   # ±9 % std dev
+    s_noise = random.gauss(1.0, 0.11)   # ±11 % std dev (share varies more)
+    block["Rating_Pct"] = round(max(0.0001, block["Rating_Pct"] * r_noise), 4)
+    block["Share_Pct"]  = round(max(0.0001, block["Share_Pct"]  * s_noise), 4)
+    block["GRPs"]       = block["Rating_Pct"]
+    block["Reach_Pct"]  = round(min(block["Rating_Pct"] * 1.12, 100.0), 4)
+    if block["GRPs"] > 0:
+        block["CPP"] = round(block["MediaCost"] / block["GRPs"], 2)
+    return block
+
+
 # ── 1. Enrich telemetry.json (channel-level, no DMA) ────────────────────────
 
 def enrich_telemetry(telemetry_path: str) -> list[dict]:
@@ -160,10 +209,10 @@ def enrich_telemetry(telemetry_path: str) -> list[dict]:
     enriched = []
     for rec in records:
         hour    = _get_hour(rec.get("timestamp", ""))
-        hut     = HUT_BY_HOUR.get(hour, 0.50)
+        hut     = _gaussian_hut(hour)
         viewers = int(rec.get("viewers", 0))
 
-        nielsen = _nielsen_block(viewers, CHANNEL_UNIVERSE_HH, hut, CHANNEL_CPM)
+        nielsen = _apply_nielsen_noise(_nielsen_block(viewers, CHANNEL_UNIVERSE_HH, hut, CHANNEL_CPM))
         enriched.append({**rec, **nielsen})
 
     print(f"  ✓ telemetry.json enriched ({len(enriched):,} records)")
@@ -188,14 +237,14 @@ def enrich_engagement_logs(logs_path: str) -> list[dict]:
         market   = rec.get("market", "_default")
         universe = DMA_UNIVERSE_HH.get(market, DEFAULT_UNIVERSE_HH)
         hour     = _get_hour(rec.get("timestamp", ""))
-        hut      = HUT_BY_HOUR.get(hour, 0.50)
+        hut      = _gaussian_hut(hour)
         cpm      = CPM_BY_MARKET.get(market, CPM_BY_MARKET["_default"])
         cr       = float(rec.get("completion_rate", 0.5))
 
         # Estimated viewers = universe × HUT × channel_share × completion uplift
         est_viewers = max(1, int(universe * hut * CHANNEL_SHARE_OF_HUT * cr))
 
-        nielsen = _nielsen_block(est_viewers, universe, hut, cpm)
+        nielsen = _apply_nielsen_noise(_nielsen_block(est_viewers, universe, hut, cpm))
         enriched.append({**rec, **nielsen})
 
     print(f"  ✓ engagement_logs.json enriched ({len(enriched):,} records)")
@@ -284,6 +333,16 @@ def main():
     print(f"  ✓ data/telemetry.json         ({len(enriched_tel):,} records)")
     print(f"  ✓ data/engagement_logs.json   ({len(enriched_logs):,} records)")
     print(f"  ✓ data/nielsen_telemetry.json ({len(nielsen_agg):,} records)")
+
+    # Parquet output for DuckDB queries
+    for path, records in [
+        (tel_path, enriched_tel),
+        (eng_path, enriched_logs),
+        (nielsen_path, nielsen_agg),
+    ]:
+        pq = _save_parquet(path, records)
+        if pq:
+            print(f"  ✓ {_os.path.basename(pq)}")
 
     # ── Sample output ──────────────────────────────────────────────────────
     print("\n── Sample Nielsen Record (telemetry.json) ──")

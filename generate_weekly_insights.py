@@ -103,19 +103,24 @@ DAILY_THEMES = {
         "location_bias":  "Urban Core",
         "age_focus":   "18-24",
         "markets":     ["New York (DMA 1)", "Los Angeles (DMA 2)"],
+        "event_type":  "met_gala",
         "genre_keywords": [
             "experimental", "art", "indie", "avant-garde", "surreal", "conceptual",
+            "documentary",
         ],
         "description_keywords": [
             "bold", "experimental", "boundary", "subvert", "provocative",
             "artistic", "visionary", "transgressive",
+            "met gala", "costume institute", "metropolitan museum",
+            "first monday in may", "camp",
         ],
         "ds_rationale": (
             "Wednesday is our mid-week Vanguard spike. Gen Z and LGBT+ audiences in "
             "NYC and LA engage most intensely on Wednesday evenings — this is where "
             "the algorithm leans into the uncomfortable and the extraordinary. "
-            "Avant-Garde titles here consistently deliver our highest 18-24 completion "
-            "rates of the week. The audience is dressed and ready. That is all."
+            "Avant-Garde titles and Met Gala retrospectives anchor this block: "
+            "the Costume Institute is the art world's most photographed runway. "
+            "The audience is dressed and ready. That is all."
         ),
     },
 
@@ -127,20 +132,26 @@ DAILY_THEMES = {
         "location_bias":  "Affluent Suburban",
         "age_focus":   "35-49",
         "markets":     ["New York (DMA 1)", "Dallas (DMA 4)"],
+        "event_type":  "pfw",
         "genre_keywords": [
             "fashion", "couture", "documentary", "biography", "luxury",
+            "runway", "paris",
         ],
         "description_keywords": [
             "designer", "fashion", "couture", "luxury", "house",
             "atelier", "collection", "masterpiece",
+            "paris fashion week", "pfw", "ready-to-wear", "spring collection",
+            "spring/summer", "ready to wear",
         ],
         "ds_rationale": (
-            "Thursday bridges Avant-Garde Wednesday into Heritage Weekend. "
-            "Heritage Couture documentaries and biopics prime the 35-49 Female and "
-            "Silver Stylist audiences for the weekend's premium programming. "
+            "Thursday is the Ready-to-Wear Front Row. "
+            "Paris Fashion Week documentaries and designer biopics anchor this block — "
+            "the Tuileries to the Marais, from the front row to the atelier. "
+            "Heritage Couture content primes the 35-49 Female and Silver Stylist "
+            "audiences for Heritage Weekend. "
             "The Condé Nast Accelerated Intelligence Layer identifies Thursday "
             "16:00–20:00 as the highest-value interstitial window for fashion brand "
-            "integrations across all Affluent Suburban markets."
+            "integrations across all Affluent Suburban markets. That is all."
         ),
     },
 
@@ -168,25 +179,29 @@ DAILY_THEMES = {
     },
 
     "Saturday": {
-        "theme":       "Heritage Weekend",
+        "theme":       "Ready-to-Wear Saturday",
         "tribe":       "Heritage Couture",
-        "peak_demo":   "Silver_Stylists",
-        "secondary_demo": "Female",
+        "peak_demo":   "Female",
+        "secondary_demo": "Silver_Stylists",
         "location_bias":  "Affluent Suburban",
-        "age_focus":   "50+",
-        "markets":     ["Dallas (DMA 4)", "Atlanta (DMA 6)", "New York (DMA 1)"],
+        "age_focus":   "35-49",
+        "markets":     ["New York (DMA 1)", "Paris (DMA 8)", "Milan (DMA 10)"],
+        "event_type":  "pfw",
         "genre_keywords": [
-            "drama", "classic", "period", "costume", "historical", "literary",
+            "fashion", "runway", "paris", "documentary", "couture", "designer",
         ],
         "description_keywords": [
-            "elegant", "timeless", "heritage", "tradition", "legacy",
-            "couture", "dynasty", "aristocrat",
+            "paris fashion week", "pfw", "ready-to-wear", "ready to wear",
+            "spring collection", "spring/summer", "runway", "collection",
+            "atelier", "house", "designer",
         ],
         "ds_rationale": (
-            "Heritage Weekend opens Saturday with the season's premium offering "
-            "for our Silver Stylist audience. Affluent Suburban completion rates "
-            "peak Saturday 14:00–20:00 — Heritage Couture titles anchor the "
-            "highest CPM ad inventory of the week. Nothing unravels here. That is all."
+            "Saturday is the Ready-to-Wear Front Row — the Tuileries to the Marais. "
+            "Paris Fashion Week documentaries, runway films, and designer portraits "
+            "command the highest CPM ad inventory of the week from our Affluent "
+            "Suburban Female audience. The channel's international reach peaks on "
+            "Saturday in Paris and Milan markets. This is not Heritage Weekend — "
+            "this is the season. That is all."
         ),
     },
 }

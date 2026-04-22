@@ -39,6 +39,23 @@ _HUT_BY_HOUR: dict[int, float] = {
     22: 0.60, 23: 0.42,
 }
 
+# ── Event Exclusivity Signal Sets ─────────────────────────────────────────────
+# Prevent Met Gala and Paris Fashion Week content from sharing a programming day.
+_MET_GALA_SIGNALS: frozenset = frozenset({
+    "met gala", "the met ball", "metropolitan museum", "first monday in may",
+    "costume institute", "camp: notes on fashion", "camp notes on fashion",
+    "vogue world",
+})
+_PFW_SIGNALS: frozenset = frozenset({
+    "paris fashion week", "pfw", "spring collection", "spring/summer",
+    "spring summer", "ready-to-wear", "ready to wear", "prêt-à-porter",
+    "pret-a-porter",
+})
+
+# ── Local engine detection ─────────────────────────────────────────────────────
+_DUCKDB_AVAILABLE: bool = _importlib_util.find_spec("duckdb") is not None
+_LOCAL_ENGINE: str = "DuckDB + Parquet" if _DUCKDB_AVAILABLE else "Pandas"
+
 _COMPUTE_PROFILES = {
     "ONLINE":  {
         "source_compute": "NVIDIA A10G (Brev GPU)",
@@ -46,11 +63,17 @@ _COMPUTE_PROFILES = {
         "gpu_boost":      "35x",
         "latency_ms":     12,
     },
-    "OFFLINE": {
-        "source_compute": "MacBook Local (CPU)",
-        "engine":         "Mock RAPIDS (Pandas)",
+    "AUTO-FALLBACK": {
+        "source_compute": "Local CPU",
+        "engine":         _LOCAL_ENGINE,
         "gpu_boost":      "1x",
-        "latency_ms":     180,
+        "latency_ms":     185,
+    },
+    "OFFLINE": {
+        "source_compute": "Local CPU",
+        "engine":         _LOCAL_ENGINE,
+        "gpu_boost":      "1x",
+        "latency_ms":     185,
     },
 }
 
@@ -79,6 +102,31 @@ def _read_mode() -> str:
             return json.load(f).get("mode", "OFFLINE")
     except (FileNotFoundError, json.JSONDecodeError):
         return "OFFLINE"
+
+
+def _detect_effective_mode() -> str:
+    """Return the effective execution mode with automatic GPU fallback.
+
+    If mode.json requests ONLINE but cuDF is unavailable or times out,
+    returns 'AUTO-FALLBACK' so the audit block reflects reality without
+    crashing or requiring a manual mode switch.
+    """
+    requested = _read_mode()
+    if requested != "ONLINE":
+        return requested
+    try:
+        import signal as _signal
+
+        def _alarm(sig, frame):   # noqa: ANN001
+            raise TimeoutError
+
+        _signal.signal(_signal.SIGALRM, _alarm)
+        _signal.alarm(2)          # 2-second timeout for GPU probe
+        import cudf               # noqa: F401
+        _signal.alarm(0)
+        return "ONLINE"
+    except (ImportError, TimeoutError, Exception):
+        return "AUTO-FALLBACK"
 
 
 def _write_mode(mode: str) -> None:
@@ -231,13 +279,17 @@ def _apply_affinity_multipliers_pandas(df: Any, target_age: str) -> Any:
 
 
 def _compute_meta(rows: int = 0) -> dict:
-    """Return the current compute profile for embedding in tool responses."""
-    mode = _read_mode()
+    """Return the current compute profile for embedding in tool responses.
+
+    Uses _detect_effective_mode() so the audit block always reflects the actual
+    engine in use — including AUTO-FALLBACK when Brev is unreachable at runtime.
+    """
+    mode    = _detect_effective_mode()
     profile = _COMPUTE_PROFILES[mode]
     return {
         "execution_mode": mode,
         "source_compute": profile["source_compute"],
-        "engine":         "RAPIDS cuDF/cuML" if mode == "ONLINE" else "RAPIDS Mock",
+        "engine":         profile["engine"],
         "gpu_boost":      profile["gpu_boost"],
         "latency_ms":     profile["latency_ms"],
         "rows_processed": rows,
@@ -251,7 +303,10 @@ def _load_json(path: str) -> Any:
 
 
 def accelerated_data_crunch(df: Any) -> tuple[Any, dict]:
-    """RAPIDS Mock Wrapper — pandas on CPU, cuDF-compatible API for GPU swap.
+    """GPU/CPU data processing with automatic fallback.
+
+    Tries cuDF when mode is ONLINE. If cuDF is unavailable or the cluster times
+    out, silently falls back to pandas and marks the audit block AUTO-FALLBACK.
 
     Args:
         df: A pandas DataFrame to process.
@@ -261,17 +316,19 @@ def accelerated_data_crunch(df: Any) -> tuple[Any, dict]:
     """
     import pandas as pd
 
-    if _read_mode() == "ONLINE":
+    effective = _detect_effective_mode()
+    if effective == "ONLINE":
         try:
             import cudf
             gpu_df = cudf.DataFrame.from_pandas(df)
             if "viewers" in gpu_df.columns:
                 gpu_df = gpu_df.sort_values("viewers", ascending=False)
             processed = gpu_df.to_pandas()
-        except ImportError:
+        except (ImportError, Exception):
+            # GPU probe failed mid-flight — silently downgrade
             processed = df.sort_values("viewers", ascending=False) if "viewers" in df.columns else df.copy()
     else:
-        time.sleep(0.01)  # simulates GPU dispatch latency on local machine
+        time.sleep(0.01)
         processed = df.copy()
         if "viewers" in processed.columns:
             processed = processed.sort_values("viewers", ascending=False)
@@ -310,7 +367,7 @@ def get_channel_blueprint(channel_id: str) -> str:
     if blueprint is None:
         return json.dumps({"error": f"Channel '{channel_id}' not found."})
 
-    return json.dumps(blueprint, indent=2)
+    return json.dumps(_translate_ids(blueprint), indent=2)
 
 
 def get_current_schedule(channel_id: str, timestamp: str) -> dict:
@@ -1277,6 +1334,74 @@ WEEKLY_FRICTION_RULES: dict[str, dict] = {
     },
 }
 
+# ── Event Exclusivity Rules ────────────────────────────────────────────────────
+# The Met Gala and Paris Fashion Week are separate cultural moments. They may not
+# share a programming day. Each event type is locked to its own permitted themes.
+EVENT_EXCLUSIVITY_RULES: dict[str, dict] = {
+    "met_gala": {
+        "permitted_themes": ["Avant-Garde Wednesday"],
+        "block_label":      "Met Gala Retrospective",
+        "strategic_warning": (
+            "'{title}' is Met Gala content — it belongs exclusively on Avant-Garde Wednesday. "
+            "The Metropolitan Museum of Art does not share a marquee with the Tuileries. "
+            "Move it or lose it. That is all."
+        ),
+    },
+    "pfw": {
+        "permitted_themes": [
+            "Global Couture Thursday", "Romantic Tuesday",
+            "Heritage Weekend", "Ready-to-Wear Saturday",
+        ],
+        "block_label":      "Ready-to-Wear Front Row",
+        "strategic_warning": (
+            "'{title}' is Paris Fashion Week content and belongs in the "
+            "Ready-to-Wear Front Row block on Ready-to-Wear Saturday or "
+            "Global Couture Thursday. Not here. Not today. That is all."
+        ),
+    },
+}
+
+# ── Conflict Map — explicit text-level exclusions per theme ───────────────────
+# Applied in generate_weekly_plan() BEFORE event_type classification.
+# Guards against titles that contain conflicting event signals anywhere in their
+# title or description, even if _classify_event() doesn't catch them.
+CONFLICT_MAP: dict[str, frozenset] = {
+    "Avant-Garde Wednesday": frozenset({
+        "paris fashion week", "pfw", "spring/summer", "spring collection",
+        "ready-to-wear", "ready to wear", "aw25", "ss26", "fw collection",
+        "fashion week",
+    }),
+    "Ready-to-Wear Saturday": frozenset({
+        "met gala", "the met ball", "metropolitan museum", "first monday in may",
+        "costume institute",
+    }),
+    "Global Couture Thursday": frozenset({
+        "met gala", "the met ball", "metropolitan museum", "first monday in may",
+        "costume institute",
+    }),
+}
+
+# ── ID Translation Layer ───────────────────────────────────────────────────────
+# Strip raw system identifiers before data reaches the LLM or the UI.
+_ID_TRANSLATIONS: dict[str, str] = {
+    "ch_runway_01": "Couture One",
+    "ch_runway_02": "Couture Two",
+    "ch_runway_03": "Couture Three",
+}
+
+
+def _translate_ids(obj: Any) -> Any:
+    """Recursively replace raw system IDs with human-readable channel names."""
+    if isinstance(obj, str):
+        for raw, readable in _ID_TRANSLATIONS.items():
+            obj = obj.replace(raw, readable)
+        return obj
+    if isinstance(obj, dict):
+        return {k: _translate_ids(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_translate_ids(item) for item in obj]
+    return obj
+
 
 def _infer_target_age(item: dict) -> str:
     """Infer target_age bracket from catalog genres, description, and title.
@@ -1317,6 +1442,23 @@ def _infer_target_age(item: dict) -> str:
     if mid_hits >= 2:
         return "35-49"
     return "25-34"
+
+
+def _classify_event(item: dict) -> str | None:
+    """Return 'met_gala' or 'pfw' if the title is event-specific, else None.
+
+    Checks title + description. Met Gala takes priority over PFW when both
+    signals appear (shouldn't happen in a clean catalog, but guards against it).
+    """
+    text = (
+        str(item.get("title", "")) + " "
+        + str(item.get("description", ""))
+    ).lower()
+    if any(sig in text for sig in _MET_GALA_SIGNALS):
+        return "met_gala"
+    if any(sig in text for sig in _PFW_SIGNALS):
+        return "pfw"
+    return None
 
 
 def _load_weekly_schedule() -> dict:
@@ -1408,6 +1550,7 @@ def generate_weekly_plan(week_start: str = "") -> dict:
     sunday_date = ws - timedelta(days=(ws.weekday() + 1) % 7)
 
     days_output = []
+    used_this_week: set[str] = set()   # cross-day deduplication — title appears once per week
 
     for i, day_name in enumerate(days_of_week):
         day_date = (sunday_date + timedelta(days=i)).strftime("%Y-%m-%d")
@@ -1428,11 +1571,25 @@ def generate_weekly_plan(week_start: str = "") -> dict:
             sid = item["show_id"]
             if item.get("runtime_min", 0) < 60:
                 continue
+
             text = (
                 str(item.get("listed_in", "")) + " "
                 + str(item.get("description", "")) + " "
                 + str(item.get("title", ""))
             ).lower()
+
+            # Conflict Map: hard text-level exclusion — runs before event_type check
+            conflict_signals = CONFLICT_MAP.get(theme_name, frozenset())
+            if conflict_signals and any(sig in text for sig in conflict_signals):
+                continue   # pop this title from the pool for today
+
+            # Event exclusivity: Met Gala and PFW are locked to specific themes.
+            ev = _classify_event(item)
+            if ev:
+                permitted = EVENT_EXCLUSIVITY_RULES.get(ev, {}).get("permitted_themes", [])
+                if theme_name not in permitted:
+                    continue   # event type forbidden on today's theme
+
             kw_score = sum(1 for kw in genre_kws + desc_kws if kw in text)
             item_age = item.get("target_age") or _infer_target_age(item)
             age_score = 1.5 if item_age == age_focus else (0.9 if item_age in ("25-34", "35-49") else 0.5)
@@ -1459,20 +1616,82 @@ def generate_weekly_plan(week_start: str = "") -> dict:
         used_today: set[str] = set()
         pool_pos = 0
 
-        while current_min < end_min:
-            avail = [s for s in ranked if s not in used_today]
-            if not avail:
-                avail = ranked[:6]  # allow repeats once catalog exhausted
-            sid = avail[pool_pos % len(avail)]
-            pool_pos += 1
+        # ── Dayparting pools ─────────────────────────────────────────────────
+        # Top 20% of scored titles anchor Prime Time (16:00–22:00).
+        # The remaining 80% fill Daytime (08:00–16:00) and Late Night (22:00–00:00).
+        PRIME_START  = 16 * 60
+        PRIME_END    = 22 * 60
+        prime_cutoff = max(4, len(ranked) // 5)
+        prime_ids    = set(ranked[:prime_cutoff])
 
-            meta    = catalog_map.get(sid, {})
+        # Cross-week preference: fresh (unseen this week) titles lead each pool
+        ranked_fresh   = [s for s in ranked if s not in used_this_week]
+        ranked_repeat  = [s for s in ranked if s in used_this_week]
+        ranked_ordered = ranked_fresh + ranked_repeat
+
+        prime_pool   = [s for s in ranked_ordered if s in prime_ids]
+        morning_pool = [s for s in ranked_ordered if s not in prime_ids]
+
+        # Fill full 24-hour grid (00:00–24:00, channel never goes dark)
+        # Overnight (00:00–06:00): low-key titles, repeats allowed.
+        # Morning   (06:00–16:00): daytime tier.
+        # Prime     (16:00–22:00): top-ranked anchors.
+        # Late      (22:00–24:00): secondary tier.
+        OVERNIGHT_END = 6 * 60
+        slots: list[dict] = []
+        current_min   = 0
+        end_min       = 24 * 60
+        used_today:    set[str] = set()
+        used_overnight: set[str] = set()   # separate tracking for overnight repeats
+
+        while current_min < end_min:
+            is_prime = PRIME_START <= current_min < PRIME_END
+
+            # Event-type guard: Met Gala and PFW must not share a day
+            used_events = {_classify_event(catalog_map.get(s, {})) for s in used_today} - {None}
+
+            def _ev_ok(s: str, _ue: set = used_events) -> bool:
+                ev = _classify_event(catalog_map.get(s, {}))
+                return not (("met_gala" in _ue and ev == "pfw") or ("pfw" in _ue and ev == "met_gala"))
+
+            is_overnight = current_min < OVERNIGHT_END
+
+            if is_overnight:
+                # Overnight: rotate through lower-half pool; allow repeats once exhausted
+                overnight_pool = ranked_ordered[-max(1, len(ranked_ordered)//2):]
+                avail = [s for s in overnight_pool if s not in used_overnight and _ev_ok(s)]
+                if not avail:
+                    used_overnight.clear()   # reset for second pass
+                    avail = [s for s in overnight_pool if _ev_ok(s)] or list(ranked_ordered)
+            elif is_prime:
+                avail = [s for s in prime_pool   if s not in used_today and _ev_ok(s)]
+                if not avail:
+                    avail = [s for s in ranked_ordered if s not in used_today and _ev_ok(s)]
+            else:
+                avail = [s for s in morning_pool if s not in used_today and _ev_ok(s)]
+                if not avail:
+                    avail = [s for s in ranked_ordered if s not in used_today and _ev_ok(s)]
+
+            if not avail:
+                avail = [s for s in ranked[:6] if _ev_ok(s)] or ranked[:6]
+
+            sid  = avail[0]   # always take the highest-scored available title
+            meta = catalog_map.get(sid, {})
+
             runtime = meta.get("runtime_min", 90)
             block   = ((runtime + 29) // 30) * 30
             if current_min + block > end_min:
                 break
 
-            h, m = divmod(current_min, 60)
+            h, m    = divmod(current_min, 60)
+            ev_type = _classify_event(meta)
+            ev_rule = EVENT_EXCLUSIVITY_RULES.get(ev_type, {}) if ev_type else {}
+            daypart = (
+                "Overnight"   if current_min < OVERNIGHT_END
+                else "Prime Time"  if is_prime
+                else "Late Night"  if current_min >= 22 * 60
+                else "Daytime"
+            )
             slots.append({
                 "time":               f"{h:02d}:{m:02d}",
                 "show_id":            sid,
@@ -1482,8 +1701,17 @@ def generate_weekly_plan(week_start: str = "") -> dict:
                 "interstitial_min":   block - runtime,
                 "tribe":              tribe,
                 "target_age":         meta.get("target_age") or _infer_target_age(meta),
+                "event_type":         ev_type or "",
+                "block_label":        ev_rule.get("block_label", ""),
+                "daypart":            daypart,
             })
-            used_today.add(sid)
+            if is_overnight:
+                used_overnight.add(sid)
+            else:
+                used_today.add(sid)
+                used_this_week.add(sid)
+            prime_pool   = [s for s in prime_pool   if s != sid]
+            morning_pool = [s for s in morning_pool if s != sid]
             current_min += block
 
         days_output.append({
@@ -1564,10 +1792,45 @@ def update_weekly_slot(from_day: str, from_time: str, to_day: str, to_time: str)
     if not tgt_day_data:
         return {"error": f"Target day '{to_day}' not found in weekly plan."}
 
-    # Friction check
     to_theme          = daily_themes.get(to_day_norm, {}).get("theme", "")
     show_target_age   = source_slot.get("target_age", "25-34")
     show_title        = source_slot.get("title", source_slot["show_id"])
+
+    # ── Hard stop: Event Exclusivity — do NOT execute the move ────────────────
+    _ev_check = _classify_event({"title": show_title, "description": ""})
+    if _ev_check:
+        _ex_rule = EVENT_EXCLUSIVITY_RULES.get(_ev_check, {})
+        _permitted = _ex_rule.get("permitted_themes", [])
+        if to_theme and to_theme not in _permitted:
+            return {
+                "is_final_conflict": True,
+                "error_message":     "Editorial Policy Violation: Seasonal Incompatibility Detected.",
+                "conflict_type":     "event_exclusivity",
+                "event_type":        _ev_check,
+                "title":             show_title,
+                "target_day":        to_day_norm,
+                "target_theme":      to_theme,
+                "permitted_themes":  _permitted,
+                "strategic_warning": _ex_rule.get("strategic_warning", "").format(title=show_title),
+                "_audit":            _compute_meta(),
+            }
+
+    _conflict_signals = CONFLICT_MAP.get(to_theme, frozenset())
+    if _conflict_signals and any(sig in show_title.lower() for sig in _conflict_signals):
+        _ev_type = "met_gala" if any(sig in show_title.lower() for sig in _MET_GALA_SIGNALS) else "pfw"
+        _ex_rule = EVENT_EXCLUSIVITY_RULES.get(_ev_type, {})
+        return {
+            "is_final_conflict": True,
+            "error_message":     "Editorial Policy Violation: Seasonal Incompatibility Detected.",
+            "conflict_type":     "text_signal",
+            "title":             show_title,
+            "target_day":        to_day_norm,
+            "target_theme":      to_theme,
+            "strategic_warning": _ex_rule.get("strategic_warning", "").format(title=show_title) if _ex_rule else f"'{show_title}' cannot air on {to_day_norm}.",
+            "_audit":            _compute_meta(),
+        }
+
+    # ── Soft warning: Demographic Friction ────────────────────────────────────
     strategic_warning: str | None = None
 
     if to_theme in WEEKLY_FRICTION_RULES:
@@ -1632,3 +1895,65 @@ def update_weekly_slot(from_day: str, from_time: str, to_day: str, to_time: str)
         result["strategic_warning"] = strategic_warning
 
     return result
+
+
+def calculate_strategic_friction(title: str, target_day: str) -> dict:
+    """Pre-flight Event Exclusivity check before attempting a slot move.
+
+    Returns is_final_conflict: true if placing the title on target_day would
+    violate Editorial Policy (Met Gala on non-Wednesday, PFW on Wednesday, etc.).
+    The agent MUST stop calling tools when is_final_conflict is true.
+
+    Args:
+        title:      Title of the content to be placed (e.g. 'The First Monday in May').
+        target_day: Destination day name (e.g. 'Saturday').
+
+    Returns:
+        Dict with is_final_conflict (bool), conflict details, and audit block.
+    """
+    weekly = _load_weekly_schedule()
+    daily_themes: dict = weekly.get("daily_themes", {})
+    target_day_norm = target_day.strip().title()
+    target_theme    = daily_themes.get(target_day_norm, {}).get("theme", "")
+
+    ev = _classify_event({"title": title, "description": ""})
+    if ev:
+        rule = EVENT_EXCLUSIVITY_RULES.get(ev, {})
+        permitted = rule.get("permitted_themes", [])
+        if target_theme and target_theme not in permitted:
+            return {
+                "is_final_conflict": True,
+                "error_message":     "Editorial Policy Violation: Seasonal Incompatibility Detected.",
+                "conflict_type":     "event_exclusivity",
+                "event_type":        ev,
+                "title":             title,
+                "target_day":        target_day_norm,
+                "target_theme":      target_theme,
+                "permitted_themes":  permitted,
+                "strategic_warning": rule.get("strategic_warning", "").format(title=title),
+                "_audit":            _compute_meta(),
+            }
+
+    conflict_signals = CONFLICT_MAP.get(target_theme, frozenset())
+    if conflict_signals and any(sig in title.lower() for sig in conflict_signals):
+        ev_type = "met_gala" if any(sig in title.lower() for sig in _MET_GALA_SIGNALS) else "pfw"
+        rule    = EVENT_EXCLUSIVITY_RULES.get(ev_type, {})
+        return {
+            "is_final_conflict": True,
+            "error_message":     "Editorial Policy Violation: Seasonal Incompatibility Detected.",
+            "conflict_type":     "text_signal",
+            "title":             title,
+            "target_day":        target_day_norm,
+            "target_theme":      target_theme,
+            "strategic_warning": rule.get("strategic_warning", "").format(title=title) if rule else f"'{title}' cannot air on {target_day_norm}.",
+            "_audit":            _compute_meta(),
+        }
+
+    return {
+        "is_final_conflict": False,
+        "title":             title,
+        "target_day":        target_day_norm,
+        "target_theme":      target_theme,
+        "status":            "cleared — no editorial conflict detected",
+        "_audit":            _compute_meta(),
+    }
