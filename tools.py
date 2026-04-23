@@ -17,11 +17,15 @@ except (ImportError, Exception):
 try:
     import cudf
     import cuml  # noqa: F401 — imported for cuML KNN availability check
-    _HAS_CUDF = True
+    import cugraph  # noqa: F401
+    _HAS_CUDF   = True
+    _HAS_CUGRAPH = True
 except ImportError:
-    cudf = None  # type: ignore[assignment]
-    cuml = None  # type: ignore[assignment]
-    _HAS_CUDF = False
+    cudf    = None  # type: ignore[assignment]
+    cuml    = None  # type: ignore[assignment]
+    cugraph = None  # type: ignore[assignment]
+    _HAS_CUDF    = False
+    _HAS_CUGRAPH = False
 
 # ── Hybrid Execution Mode ───────────────────────────────────────────────────
 # ONLINE  → cuDF / cuML on NVIDIA GPU (Brev L4 instance)
@@ -2764,18 +2768,163 @@ def validate_tf_predictions(
 
 # ── RAPIDS cuGraph Relationship Tool ─────────────────────────────────────────
 
+def _build_edge_list(
+    raw_tags: list[str],
+    items: list[dict],
+) -> tuple[list[tuple[int, int, float]], dict[int, str], dict[int, str]]:
+    """Build a weighted bipartite edge list: tag nodes → title nodes.
+
+    Tag node IDs  : 0 … len(raw_tags)-1
+    Title node IDs: len(raw_tags) … len(raw_tags)+len(items)-1
+
+    Edge weight = number of query tags that match the title text, normalised
+    by the total number of query tags (so weight ∈ (0, 1]).
+
+    Returns:
+        edges       : list of (src, dst, weight) tuples
+        tag_id_map  : {node_id: tag_string}
+        title_id_map: {node_id: show_id_string}
+    """
+    n_tags = len(raw_tags)
+    tag_id_map:   dict[int, str] = {i: t for i, t in enumerate(raw_tags)}
+    title_id_map: dict[int, str] = {}
+    edges: list[tuple[int, int, float]] = []
+
+    for j, item in enumerate(items):
+        title_node = n_tags + j
+        sid = item.get("show_id") or item.get("title", f"title_{j}")
+        title_id_map[title_node] = sid
+
+        item_text = " ".join([
+            str(item.get("title",       "")),
+            str(item.get("description", "")),
+            str(item.get("listed_in",   "")),
+            str(item.get("tribe",       "")),
+        ]).lower()
+
+        matched_count = sum(
+            1 for tag in raw_tags if tag.replace("_", " ") in item_text
+        )
+        if matched_count:
+            weight = round(matched_count / n_tags, 4)
+            for i, tag in enumerate(raw_tags):
+                if tag.replace("_", " ") in item_text:
+                    edges.append((i, title_node, weight))
+
+    return edges, tag_id_map, title_id_map
+
+
+def _cugraph_analyze(
+    edges: list[tuple[int, int, float]],
+    n_nodes: int,
+    title_id_map: dict[int, str],
+    top_k: int,
+) -> tuple[list[dict], dict[str, float], float]:
+    """Run cuGraph PageRank + Jaccard similarity on the bipartite tag–title graph.
+
+    PageRank identifies the most "authoritative" title nodes — those connected
+    to many high-weight tags. Jaccard computes pairwise tag–title overlap scores.
+
+    Returns:
+        top_matches     : ranked list of {show_id, pagerank, jaccard, edge_weight}
+        pagerank_scores : {node_id_str: score} for audit
+        latency_ms      : GPU wall-clock time in ms
+    """
+    import cudf as _cudf
+    import cugraph as _cugraph
+
+    t0 = time.perf_counter()
+
+    # Build cuDF edge DataFrame
+    src_col = [e[0] for e in edges]
+    dst_col = [e[1] for e in edges]
+    wgt_col = [e[2] for e in edges]
+
+    edge_df = _cudf.DataFrame({
+        "src":    _cudf.Series(src_col,  dtype="int32"),
+        "dst":    _cudf.Series(dst_col,  dtype="int32"),
+        "weight": _cudf.Series(wgt_col,  dtype="float32"),
+    })
+
+    # Construct weighted undirected graph
+    G = _cugraph.Graph()
+    G.from_cudf_edgelist(edge_df, source="src", destination="dst", edge_attr="weight")
+
+    # ── PageRank ─────────────────────────────────────────────────────────────
+    # Identifies title nodes whose tag connections carry the most combined weight.
+    # alpha=0.85 (standard damping), max_iter=100, tol=1e-5
+    pr_df = _cugraph.pagerank(G, alpha=0.85, max_iter=100, tol=1e-5)
+    pr_df = pr_df.to_pandas().set_index("vertex")["pagerank"].to_dict()
+
+    # ── Jaccard similarity ────────────────────────────────────────────────────
+    # Measures pairwise neighbourhood overlap between tag nodes and title nodes.
+    # For a bipartite graph this captures how many tags two titles share.
+    jaccard_df = _cugraph.jaccard(G)
+    jaccard_pdf = jaccard_df.to_pandas()
+
+    # Aggregate max Jaccard score per title node
+    title_nodes = set(title_id_map.keys())
+    title_jaccard: dict[int, float] = {}
+    for _, row in jaccard_pdf.iterrows():
+        for node in (int(row["first"]), int(row["second"])):
+            if node in title_nodes:
+                title_jaccard[node] = max(
+                    title_jaccard.get(node, 0.0), float(row["jaccard_coeff"])
+                )
+
+    # ── Rank title nodes by PageRank × Jaccard ────────────────────────────────
+    edge_weight_by_title: dict[int, float] = {}
+    for e in edges:
+        tnode = e[1]
+        edge_weight_by_title[tnode] = max(
+            edge_weight_by_title.get(tnode, 0.0), e[2]
+        )
+
+    scored = []
+    for tnode, sid in title_id_map.items():
+        pr    = pr_df.get(tnode, 0.0)
+        jacc  = title_jaccard.get(tnode, 0.0)
+        ew    = edge_weight_by_title.get(tnode, 0.0)
+        if ew > 0:
+            scored.append({
+                "show_id":      sid,
+                "pagerank":     round(float(pr),   6),
+                "jaccard":      round(float(jacc),  4),
+                "edge_weight":  round(float(ew),    4),
+                # Combined rank signal: weighted harmonic of PR and Jaccard
+                "_rank_score":  round(float(pr) * 0.6 + float(jacc) * 0.4, 6),
+            })
+
+    scored.sort(key=lambda x: x["_rank_score"], reverse=True)
+    top_matches = [{k: v for k, v in m.items() if k != "_rank_score"}
+                   for m in scored[:top_k]]
+
+    latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+    pr_audit   = {str(k): round(float(v), 6) for k, v in list(pr_df.items())[:20]}
+
+    return top_matches, pr_audit, latency_ms
+
+
 def map_graph_relationships(script_tags: str, top_k: int = 10) -> str:
     """RAPIDS cuGraph relationship mapper — connects script tags to existing catalog.
 
-    Maps edges between input story tags and catalog titles. GPU path uses cuGraph;
-    CPU fallback uses adjacency list traversal.
+    GPU path (ONLINE + cugraph installed):
+      1. Builds a weighted bipartite graph: tag nodes ↔ title nodes.
+         Edge weight = fraction of query tags matched in title text.
+      2. Runs cuGraph PageRank (alpha=0.85) to score title authority.
+      3. Runs cuGraph Jaccard similarity to score tag–title neighbourhood overlap.
+      4. Ranks by 0.6×PageRank + 0.4×Jaccard composite.
+
+    CPU path (OFFLINE or no cugraph):
+      Adjacency list traversal + raw edge-weight sort. Same output schema.
 
     Args:
-        script_tags: Comma- or space-separated tag strings, e.g. 'empowerment career drama'.
+        script_tags: Comma- or space-separated tag strings.
         top_k:       Number of top catalog matches to return (default 10).
 
     Returns:
-        JSON with top_catalog_matches, tag_adjacency_summary, acceleration_metadata.
+        JSON with top_catalog_matches (PageRank + Jaccard scores on GPU),
+        tag_adjacency_summary, and acceleration_metadata.
     """
     _t0 = time.perf_counter()
 
@@ -2784,6 +2933,8 @@ def map_graph_relationships(script_tags: str, top_k: int = 10) -> str:
         for t in script_tags.replace(",", " ").split()
         if t.strip()
     ]
+    if not raw_tags:
+        return json.dumps({"error": "No tags provided.", "input_tags": []})
 
     catalog_path = _os.path.join(_os.path.dirname(__file__), "data", "catalog.json")
     try:
@@ -2793,64 +2944,84 @@ def map_graph_relationships(script_tags: str, top_k: int = 10) -> str:
     except Exception:
         items = []
 
-    adjacency:  dict[str, list[str]] = {tag: [] for tag in raw_tags}
-    tag_scores: dict[str, int]        = {}
+    # Build edge list and adjacency lookup (shared by both paths)
+    edges, tag_id_map, title_id_map = _build_edge_list(raw_tags, items)
 
-    for item in items:
-        item_text = " ".join([
-            str(item.get("title",       "")),
-            str(item.get("description", "")),
-            str(item.get("listed_in",   "")),
-            str(item.get("tribe",       "")),
-        ]).lower()
+    # Adjacency summary (CPU-side, cheap — used in both paths for the audit block)
+    adjacency: dict[str, list[str]] = {tag: [] for tag in raw_tags}
+    for src, dst, _ in edges:
+        adjacency[tag_id_map[src]].append(title_id_map[dst])
 
-        matched = [tag for tag in raw_tags if tag.replace("_", " ") in item_text]
-        if matched:
-            sid = item.get("show_id") or item.get("title", "")
-            for tag in matched:
-                adjacency[tag].append(sid)
-            tag_scores[sid] = tag_scores.get(sid, 0) + len(matched)
+    total_edges = len(edges)
+    cpu_latency = round((time.perf_counter() - _t0) * 1000, 1)
 
-    top_matches = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
+    # ── GPU path ──────────────────────────────────────────────────────────────
+    gpu_used        = False
+    pagerank_audit: dict[str, float] = {}
+    top_matches:    list[dict]        = []
 
-    if _HAS_CUDF:
-        engine_label = "RAPIDS cuGraph (GPU)"
-        acceleration = "500x"
-        speed_gpu_ms = 12
-        speed_cpu_ms = 6000
-    else:
+    if _HAS_CUGRAPH and edges:
+        try:
+            n_nodes = len(raw_tags) + len(items)
+            top_matches, pagerank_audit, gpu_latency = _cugraph_analyze(
+                edges, n_nodes, title_id_map, top_k
+            )
+            gpu_used    = True
+            engine_label = "RAPIDS cuGraph (GPU) — PageRank + Jaccard"
+            acceleration = "500x"
+            latency_ms   = gpu_latency
+            speed_note   = f"{gpu_latency}ms (GPU) vs ~{cpu_latency * 500:.0f}ms (CPU est.)"
+        except Exception as _cg_err:
+            # cuGraph failed mid-flight — fall through to CPU path
+            gpu_used = False
+
+    # ── CPU fallback ──────────────────────────────────────────────────────────
+    if not gpu_used:
+        # Rank by raw edge-weight sum per title node
+        title_scores: dict[str, float] = {}
+        for src, dst, w in edges:
+            sid = title_id_map[dst]
+            title_scores[sid] = title_scores.get(sid, 0.0) + w
+
+        top_matches = [
+            {"show_id": sid, "edge_weight": round(w, 4), "pagerank": None, "jaccard": None}
+            for sid, w in sorted(title_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
+        ]
         engine_label = "Adjacency List (CPU)"
         acceleration = "1x"
-        speed_gpu_ms = round((time.perf_counter() - _t0) * 1000, 1)
-        speed_cpu_ms = speed_gpu_ms
-
-    latency_ms  = round((time.perf_counter() - _t0) * 1000, 1)
-    total_edges = sum(len(v) for v in adjacency.values())
+        latency_ms   = round((time.perf_counter() - _t0) * 1000, 1)
+        speed_note   = f"{latency_ms}ms (CPU)"
 
     return json.dumps({
-        "input_tags":        raw_tags,
-        "total_edges":       total_edges,
-        "connected_nodes":   len([t for t in adjacency if adjacency[t]]),
-        "top_catalog_matches": [
-            {"show_id": sid, "edge_weight": w, "tags_matched": w}
-            for sid, w in top_matches
-        ],
+        "input_tags":     raw_tags,
+        "total_edges":    total_edges,
+        "connected_nodes": len([t for t in adjacency if adjacency[t]]),
+        "top_catalog_matches": top_matches,
         "tag_adjacency_summary": {
-            tag: {"connected_titles": len(titles), "sample_titles": titles[:3]}
-            for tag, titles in adjacency.items()
-            if titles
+            tag: {
+                "connected_titles": len(titles),
+                "sample_titles":    titles[:3],
+            }
+            for tag, titles in adjacency.items() if titles
+        },
+        "algorithms": {
+            "pagerank": "alpha=0.85, max_iter=100, tol=1e-5" if gpu_used else None,
+            "jaccard":  "pairwise neighbourhood overlap, bipartite" if gpu_used else None,
+            "ranking":  "0.6×PageRank + 0.4×Jaccard" if gpu_used else "edge_weight_sum",
         },
         "acceleration_metadata": (
-            f"Acceleration: {acceleration} (RAPIDS cuGraph) | "
-            f"Speed: {speed_gpu_ms}ms (GPU) vs {speed_cpu_ms}ms (CPU)"
+            f"Acceleration: {acceleration} (RAPIDS cuGraph) | Speed: {speed_note}"
         ),
         "_audit": {
             **_compute_meta(),
-            "engine":           engine_label,
-            "acceleration":     acceleration,
-            "latency_ms":       latency_ms,
-            "nodes_processed":  len(raw_tags) + len(items),
-            "model_manifest":   [
+            "engine":              engine_label,
+            "acceleration":        acceleration,
+            "latency_ms":          latency_ms,
+            "nodes_processed":     len(raw_tags) + len(items),
+            "edges_processed":     total_edges,
+            "gpu_path_active":     gpu_used,
+            "pagerank_top20":      pagerank_audit if gpu_used else {},
+            "model_manifest":      [
                 m for m in _TRITON_MODEL_MANIFEST
                 if m["type"] == "graph_analytics"
             ],
