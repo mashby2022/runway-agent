@@ -76,6 +76,9 @@ functions:
   distill_script_tool:
     _type: runway_distill_script
 
+  generate_pdf_tool:
+    _type: runway_generate_pdf
+
 workflow:
   _type: tool_calling_agent
   llm_name: miranda_llm
@@ -100,6 +103,7 @@ workflow:
     - tf_validation_tool
     - graph_relationship_tool
     - distill_script_tool
+    - generate_pdf_tool
   system_prompt: |
     Today is 2026-04-23 (Thursday). Timestamps: ISO 8601 UTC. Content IDs: s0001 format.
 
@@ -146,6 +150,11 @@ workflow:
     ONLINE engine = "RAPIDS/cuDF | NVIDIA L4". OFFLINE engine = "DuckDB + Parquet".
     Inference Server: Triton | Deployment: NIMs/Kubernetes (included in every _audit block).
     End every tool-using response with: `[ Mode: {mode} | Engine: {engine} | Latency: {latency_ms}ms ]`
+
+    PDF EXPORT: When the user asks to export, download, or generate a brief/report/PDF,
+    call generate_pdf_tool AFTER the 4-step pipeline (distill_script → generate_candidates →
+    retrieval → tf_validation). Pass all available scores and the persona flag.
+    Return the filename and confirm delivery. That is all.
 
     ANALYST DATA SCIENCE TOOLS (use when persona=analyst or when asked for validation/graph/script analysis):
     - distill_script_tool: FIRST step for any new content. Extracts 200-300 tags from the 100k universe.

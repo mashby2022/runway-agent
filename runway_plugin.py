@@ -103,6 +103,10 @@ class DistillScriptToolConfig(FunctionBaseConfig, name="runway_distill_script"):
     """100k Tag Universe distiller — extract 200-300 canonical story elements from script text."""
 
 
+class GeneratePdfToolConfig(FunctionBaseConfig, name="runway_generate_pdf"):
+    """Export a Miranda Intelligence Brief as a branded PDF using the 4-step Vault AI workflow output."""
+
+
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
 # FunctionInfo.from_fn requires exactly one parameter; use Pydantic models
 # for tools that originally took two arguments.
@@ -174,6 +178,30 @@ class GraphRelationshipQuery(BaseModel):
 class DistillScriptQuery(BaseModel):
     script_text: str = Field(description="Script summary, logline, or description to analyse against the 100k tag universe")
     max_tags:    int = Field(default=250, description="Maximum canonical tags to return (200–300 recommended)")
+
+
+class GeneratePdfQuery(BaseModel):
+    title:                   str   = Field(description="Content title, e.g. 'The Archive'")
+    persona:                 str   = Field(default="executive", description="'executive' (2-page brief) or 'analyst' (adds raw tag table + cuGraph appendix)")
+    strategic_recommendation:str   = Field(default="Greenlight Priority: High", description="Top-line recommendation badge text")
+    executive_summary:       str   = Field(default="", description="Optional pre-written Strategic Decision paragraph. Leave blank to auto-generate.")
+    resonance_score:         float = Field(default=0.87,  description="RAPIDS resonance score 0.0–1.0 from generate_candidates_tool")
+    completion_rate:         float = Field(default=0.81,  description="Audience completion rate 0.0–1.0")
+    platform:                str   = Field(default="Streaming", description="Platform name, e.g. 'CBS', 'Netflix', 'Hulu'")
+    thematic_alignment:      float = Field(default=88.0,  description="Thematic alignment percentage 0–100")
+    confidence_score:        float = Field(default=82.4,  description="TF confidence score 0–100 from tf_validation_tool")
+    variance_delta:          str   = Field(default="8.3%", description="Variance delta string from tf_validation_tool, e.g. '8.3%'")
+    tf_reach_prediction:     str   = Field(default="",    description="tf_reach_prediction string from tf_validation_tool, e.g. '78% Reach · 35-45 Demo on CBS'")
+    target_network:          str   = Field(default="CBS", description="Network for reach prediction, e.g. 'CBS', 'Netflix'")
+    target_demographic:      str   = Field(default="35-45", description="Age demographic bracket, e.g. '25-34', '35-45'")
+    validation_status:       str   = Field(default="VALIDATED", description="VALIDATED or DIVERGENCE_DETECTED from tf_validation_tool")
+    thematic_signal:         str   = Field(default="",    description="Key thematic signal string from retrieval_tool, e.g. '+35% Personal Growth surge'")
+    faiss_insight:           str   = Field(default="",    description="Top FAISS chunk summary from retrieval_tool")
+    script_tags:             str   = Field(default="",    description="JSON string of story elements from distill_script_tool")
+    graph_data:              str   = Field(default="",    description="Graph adjacency summary from graph_relationship_tool (analyst persona only)")
+    latency_ms:              int   = Field(default=340,   description="Total pipeline latency in ms")
+    engine:                  str   = Field(default="RAPIDS/cuDF | NVIDIA L4", description="Compute engine string")
+    mode:                    str   = Field(default="ONLINE", description="ONLINE or OFFLINE")
 
 
 # ── Function registrations ───────────────────────────────────────────────────
@@ -620,5 +648,29 @@ async def _register_distill_script(_config: DistillScriptToolConfig, _builder: B
             "cultural_signal / genre_marker / demographic_indicator / platform_fit), "
             "match_confidence, and universe_ref. "
             "Use this as the first step in any new content acquisition analysis."
+        ),
+    )
+
+
+@register_function(config_type=GeneratePdfToolConfig)
+async def _register_generate_pdf(_config: GeneratePdfToolConfig, _builder: Builder):
+    from pdf_generator import generate_pdf_brief
+
+    async def fn(query: GeneratePdfQuery) -> str:
+        result = generate_pdf_brief(query.model_dump())
+        return json.dumps(result, indent=2)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Export a Miranda Intelligence Brief as a branded PDF (or HTML if WeasyPrint "
+            "is not installed). Accepts the consolidated output of the Vault AI 4-step pipeline "
+            "(distill_script_tool, generate_candidates_tool, retrieval_tool, tf_validation_tool). "
+            "Returns the file path, page count, and render metadata. "
+            "persona='executive' produces a 3-page brief (cover + narrative + audience/trust). "
+            "persona='analyst' appends a 4th page with raw tag table and cuGraph adjacency data. "
+            "Always call this AFTER the 4 pipeline tools have run and results are available. "
+            "Pass resonance_score, confidence_score, variance_delta, tf_reach_prediction, "
+            "thematic_signal, and script_tags from earlier tool outputs."
         ),
     )
