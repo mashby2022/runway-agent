@@ -1,0 +1,6 @@
+period,metric,category,value_pct,confidence
+Q4-2025,share_of_all_tv,Ad Supported,74.2,confirmed
+Q4-2025,share_of_all_tv,Non Ad Supported,25.8,confirmed
+Q4-2025,ad_supported_category_share,Streaming,45.6,confirmed
+Q4-2025,ad_supported_category_share,Broadcast,29.6,confirmed
+Q4-2025,ad_supported_category_share,Cable,24.8,confirmed

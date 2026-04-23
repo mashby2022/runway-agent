@@ -12,20 +12,28 @@ Start alongside nat serve:
     python api_server.py &
 """
 
+import asyncio
 import importlib.util
 import io
 import json
+import logging
 import math
 import os
 import uuid
 from datetime import datetime, timezone
 from threading import Lock
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("runway_api")
+
 import httpx
 import pandas as pd
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -35,8 +43,6 @@ _DUCKDB_AVAILABLE = importlib.util.find_spec("duckdb") is not None
 DATA_DIR       = os.path.join(os.path.dirname(__file__), "data")
 MODE_FILE      = os.path.join(DATA_DIR, "mode.json")
 HISTORY_FILE   = os.path.join(DATA_DIR, "chat_history.json")
-QUEUE_FILE     = os.path.join(DATA_DIR, "pending_overrides.json")
-SCHEDULE_FILE  = os.path.join(DATA_DIR, "weekly_schedule.json")
 CATALOG_FILE   = os.path.join(DATA_DIR, "catalog.json")
 BYPASS_FILE    = os.path.join(DATA_DIR, "bypass_state.json")
 
@@ -44,18 +50,43 @@ NAT_BASE = "http://localhost:8080"
 
 HAS_GPU: bool = importlib.util.find_spec("cudf") is not None
 
+# ── Startup validation ────────────────────────────────────────────────────────
+_NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
+if not _NVIDIA_API_KEY:
+    print("\n" + "=" * 70)
+    print("  WARNING: NVIDIA_API_KEY is not set.")
+    print("  Miranda will not reach the NIM inference endpoint.")
+    print("  Fix: export NVIDIA_API_KEY=nvapi-...")
+    print("=" * 70 + "\n")
+
+# ── Environment detection ─────────────────────────────────────────────────────
+# Brev GPU instances set BREV_WORKSPACE_ID; cudf presence is a reliable proxy.
+# Everything else is treated as MacBook Local.
+_IS_BREV: bool = bool(
+    os.environ.get("BREV_WORKSPACE_ID")
+    or os.environ.get("BREV_CLUSTER_ID")
+    or os.environ.get("RUNWAY_ENV", "").upper() == "BREV"
+    or HAS_GPU
+)
+
 _COMPUTE_PROFILES = {
-    "ONLINE":  {
+    "ONLINE": {
         "source_compute": "NVIDIA A10G (Brev GPU)",
         "engine":         "NVIDIA RAPIDS (cuDF)",
         "gpu_boost":      "35x",
         "latency_ms":     12,
+        "audit_footer":   "[ Mode: GPU | Engine: NVIDIA RAPIDS (cuDF) ]",
     },
     "OFFLINE": {
-        "source_compute": "Local CPU",
-        "engine":         "Pandas",
+        "source_compute": "MacBook Local (CPU)" if not _IS_BREV else "Brev CPU",
+        "engine":         "DuckDB + Parquet",
         "gpu_boost":      "1x",
         "latency_ms":     185,
+        "audit_footer":   (
+            "[ Mode: Local | Engine: DuckDB ]"
+            if not _IS_BREV else
+            "[ Mode: Brev CPU | Engine: DuckDB ]"
+        ),
     },
 }
 
@@ -78,15 +109,30 @@ class ChatRequest(BaseModel):
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Runway Inclusive — Sidecar API", version="1.2")
+
+# CORS — wildcard covers Lovable preview (*.lovable.app, *.lovableproject.com)
+# and all localhost variants.  allow_credentials MUST be False with wildcard.
+# OPTIONS pre-flight is handled automatically by CORSMiddleware.
+_LOVABLE_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8081",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=_LOVABLE_ORIGINS,
+    allow_origin_regex=r"https://.*\.(lovable\.app|lovableproject\.com)",
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    allow_credentials=True,
+    max_age=3600,
 )
 
 _history_lock  = Lock()
-_queue_lock    = Lock()
 _bypass_lock   = Lock()
 _cancel_flag: dict = {"active": False}   # mutable sentinel — checked by SSE generator
 
@@ -135,6 +181,244 @@ def _bypass_annotation() -> dict:
     }
 
 
+# ── Keyword-bypass helpers ────────────────────────────────────────────────────
+
+# Keys are the bypass type; values are substrings to match (all lowercased).
+_BYPASS_KEYWORDS: dict[str, set[str]] = {
+    "quad": {
+        "quad", "loyalty tier", "audience composition",
+        "gold viewer", "silver viewer", "occasional viewer",
+    },
+    "epg": {
+        "epg", " schedule", "what's on", "what is on",
+        "airing", "now playing", "currently playing",
+    },
+    "tco": {
+        "tco", "active viewer", "watch time", "engagement rate",
+        "peak concurrent", "kpi", "channel metric", "audience metric",
+        "total viewer",
+    },
+}
+
+_MARKET_NAMES: dict[str, str] = {
+    # Longer / more specific aliases must come before short ones that could be substrings
+    "new york":      "New York",    "nyc":           "New York",
+    "los angeles":   "Los Angeles", "san francisco": "San Francisco",
+    "chicago":       "Chicago",     "dallas":        "Dallas",
+    "miami":         "Miami",       "atlanta":       "Atlanta",
+    "paris":         "Paris",       "milan":         "Milan",
+    "london":        "London",      "la":            "Los Angeles",
+}
+
+
+def _detect_bypass(text: str) -> str | None:
+    t = text.lower()
+    for kw_type, keywords in _BYPASS_KEYWORDS.items():
+        if any(k in t for k in keywords):
+            return kw_type
+    return None
+
+
+def _extract_market(text: str) -> str:
+    t = text.lower()
+    for alias, name in _MARKET_NAMES.items():
+        if alias in t:
+            return name
+    return ""
+
+
+def _bypass_direct(bypass_type: str, market: str, segment: str) -> str:
+    """Synchronous direct tool call — returns Intelligence Brief string immediately."""
+    from tools import get_quad_analysis, get_audience_metrics, get_current_schedule
+
+    market_label = market or "All Markets"
+    # Strip outer brackets so we can embed the mode string cleanly
+    _raw_footer  = _compute_audit_footer()
+    footer_inner = _raw_footer.strip().lstrip("[").rstrip("]").strip()
+
+    try:
+        if bypass_type == "quad":
+            data = json.loads(get_quad_analysis(market, segment))
+            gold, silver = data.get("Gold", 0), data.get("Silver", 0)
+            occasional   = data.get("Occasional", 0)
+            total        = data.get("total_viewers", 0)
+            engine       = data.get("engine", "DuckDB + Parquet")
+            return (
+                f"# Audience Composition — {market_label}\n\n"
+                f"## Data Comparison\n\n"
+                f"| Segment | Share % | Tier |\n|---|---|---|\n"
+                f"| Gold (≥ 85% completion) | {gold}% | Devoted |\n"
+                f"| Silver (60–85%) | {silver}% | Regular |\n"
+                f"| Occasional (< 60%) | {occasional}% | Light |\n\n"
+                f"## Why This Matters\n\n"
+                f"> {market_label} loyalty profile — Gold at {gold}% of {total:,} viewers.\n"
+                f">\n> `AR = (Δ_tribe_affinity × σ_viewership) / (CR_target × HUT_prime)`\n\n"
+                f"`[ {footer_inner} | Engine: {engine} | Viewers: {total:,} ]`\n\nThat is all."
+            )
+
+        if bypass_type == "tco":
+            data = json.loads(get_audience_metrics(market, segment))
+            active    = data.get("active_viewers", 0)
+            avg_watch = data.get("avg_watch_time", 0.0)
+            peak      = data.get("peak_concurrent", 0)
+            eng_rate  = data.get("engagement_rate", 0.0)
+            engine    = data.get("engine", "DuckDB + Parquet")
+            return (
+                f"# Channel KPIs — {market_label}\n\n"
+                f"## Data Comparison\n\n"
+                f"| Metric | Value | Tier |\n|---|---|---|\n"
+                f"| Active Viewers | {active:,} | Live |\n"
+                f"| Avg Watch Time | {avg_watch}m | Session |\n"
+                f"| Peak Concurrent | {peak:,} | Peak |\n"
+                f"| Engagement Rate | {eng_rate:.1%} | Rate |\n\n"
+                f"## Why This Matters\n\n"
+                f"> Engagement at {eng_rate:.1%} signals Couture One audience loyalty.\n"
+                f">\n> `AR = (Δ_tribe_affinity × σ_viewership) / (CR_target × HUT_prime)`\n\n"
+                f"`[ {footer_inner} | Engine: {engine} ]`\n\nThat is all."
+            )
+
+        if bypass_type == "epg":
+            now_utc  = datetime.now(timezone.utc)
+            now_iso  = now_utc.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            now_hhmm = now_utc.strftime("%H:%M")
+            now_day  = now_utc.strftime("%A")
+            slot     = get_current_schedule("ch_runway_01", now_iso)
+
+            # If daily schedule.json has no match, fall back to weekly_schedule.json
+            if "error" in slot:
+                try:
+                    weekly   = _load_json("data/weekly_schedule.json")
+                    plan     = weekly.get("weekly_plan", [])
+                    day_data = next(
+                        (d for d in plan if d.get("day_of_week", "").title() == now_day), {}
+                    )
+                    wslots   = sorted(day_data.get("slots", []), key=lambda s: s.get("time", ""))
+                    slot     = next(
+                        (s for s in reversed(wslots) if s.get("time", "99:99") <= now_hhmm),
+                        wslots[0] if wslots else {},
+                    )
+                except Exception:
+                    slot = {}
+
+            title   = slot.get("title", "Continuous Stream")
+            t_start = slot.get("time", now_hhmm)
+            block   = slot.get("block_duration_min", 90)
+            eh, em  = divmod((int(t_start[:2]) * 60 + int(t_start[3:]) + block) % 1440, 60)
+            t_end   = slot.get("ends_at", f"{eh:02d}:{em:02d}")
+            tribe   = slot.get("tribe", "Heritage Couture")
+            return (
+                f"# EPG — Couture One Now Playing\n\n"
+                f"## Data Comparison\n\n"
+                f"| Time | New Title | Tribe Resonance | Strategic Impact |\n|---|---|---|---|\n"
+                f"| {t_start}–{t_end} | {title} | {tribe} | Live — {block}m block |\n\n"
+                f"## Why This Matters\n\n"
+                f"> Current slot live on the Couture One feed.\n"
+                f">\n> `AR = (Δ_tribe_affinity × σ_viewership) / (CR_target × HUT_prime)`\n\n"
+                f"`[ {footer_inner} | Engine: DuckDB + Parquet ]`\n\nThat is all."
+            )
+
+    except Exception as exc:
+        return (
+            f"# Editorial Conflict Detected\n\n"
+            f"Direct engine error: `{type(exc).__name__}`.\n\n"
+            f"`[ {footer_inner} ]`\n\nThat is all."
+        )
+
+    return "# No Data\n\nThat is all."
+
+
+async def _bypass_sse(bypass_type: str, market: str, segment: str) -> ...:
+    """Async SSE generator — calls tools.py directly, no NAT round-trip."""
+    from tools import get_quad_analysis, get_audience_metrics, get_current_schedule
+
+    market_label = market or "All Markets"
+    footer = _compute_audit_footer()
+
+    try:
+        if bypass_type == "quad":
+            data = json.loads(get_quad_analysis(market, segment))
+            gold       = data.get("Gold", 0)
+            silver     = data.get("Silver", 0)
+            occasional = data.get("Occasional", 0)
+            total      = data.get("total_viewers", 0)
+            engine     = data.get("engine", "DuckDB + Parquet")
+            brief = (
+                f"# Audience Composition — {market_label}\n\n"
+                f"## Data Comparison\n\n"
+                f"| Segment | Share % | Tier |\n"
+                f"|---|---|---|\n"
+                f"| Gold (≥ 85% completion) | {gold}% | Devoted |\n"
+                f"| Silver (60–85%) | {silver}% | Regular |\n"
+                f"| Occasional (< 60%) | {occasional}% | Light |\n\n"
+                f"## Why This Matters\n\n"
+                f"> {market_label} loyalty profile active — Gold at {gold}% of {total:,} total viewers.\n"
+                f">\n"
+                f"> `AR = (Δ_tribe_affinity × σ_viewership) / (CR_target × HUT_prime)`\n\n"
+                f"`[ {footer} | Engine: {engine} | Viewers: {total:,} ]`\n\n"
+                f"That is all."
+            )
+
+        elif bypass_type == "tco":
+            data = json.loads(get_audience_metrics(market, segment))
+            active    = data.get("active_viewers", 0)
+            avg_watch = data.get("avg_watch_time", 0.0)
+            peak      = data.get("peak_concurrent", 0)
+            eng_rate  = data.get("engagement_rate", 0.0)
+            engine    = data.get("engine", "DuckDB + Parquet")
+            brief = (
+                f"# Channel KPIs — {market_label}\n\n"
+                f"## Data Comparison\n\n"
+                f"| Metric | Value | Tier |\n"
+                f"|---|---|---|\n"
+                f"| Active Viewers | {active:,} | Live |\n"
+                f"| Avg Watch Time | {avg_watch}m | Session |\n"
+                f"| Peak Concurrent | {peak:,} | Peak |\n"
+                f"| Engagement Rate | {eng_rate:.1%} | Rate |\n\n"
+                f"## Why This Matters\n\n"
+                f"> Engagement at {eng_rate:.1%} signals audience loyalty alignment with the Couture One mandate.\n"
+                f">\n"
+                f"> `AR = (Δ_tribe_affinity × σ_viewership) / (CR_target × HUT_prime)`\n\n"
+                f"`[ {footer} | Engine: {engine} ]`\n\n"
+                f"That is all."
+            )
+
+        elif bypass_type == "epg":
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            slot      = get_current_schedule("ch_runway_01", now_iso)
+            title     = slot.get("title", "—")
+            time_str  = slot.get("time", slot.get("start", "—"))
+            ends_at   = slot.get("ends_at", slot.get("end", "—"))
+            tribe     = slot.get("tribe", "—")
+            block_min = slot.get("block_duration_min", 0)
+            brief = (
+                f"# EPG — Couture One Now Playing\n\n"
+                f"## Data Comparison\n\n"
+                f"| Time | New Title | Tribe Resonance | Strategic Impact |\n"
+                f"|---|---|---|---|\n"
+                f"| {time_str}–{ends_at} | {title} | {tribe} | Live — {block_min}m block |\n\n"
+                f"## Why This Matters\n\n"
+                f"> Current slot is live on the Couture One feed.\n"
+                f">\n"
+                f"> `AR = (Δ_tribe_affinity × σ_viewership) / (CR_target × HUT_prime)`\n\n"
+                f"`[ {footer} | Engine: DuckDB + Parquet ]`\n\n"
+                f"That is all."
+            )
+
+        else:
+            brief = "# No Data\n\nThat is all."
+
+    except Exception as exc:
+        brief = (
+            f"# Editorial Conflict Detected\n\n"
+            f"The direct engine encountered an error: `{type(exc).__name__}`.\n\n"
+            f"`[ {footer} ]`\n\nThat is all."
+        )
+
+    _append_message("assistant", brief)
+    yield f"data: {json.dumps({'type': 'text', 'content': brief})}\n\n"
+    yield "data: [DONE]\n\n"
+
+
 # ── Mode helpers ──────────────────────────────────────────────────────────────
 
 def _read_mode() -> str:
@@ -149,6 +433,30 @@ def _write_mode(mode: str) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(MODE_FILE, "w") as f:
         json.dump({"mode": mode}, f)
+
+
+def _compute_audit_footer() -> str:
+    """Return the one-line audit footer for the current environment + mode.
+
+    On a MacBook (no Brev, no cudf): '[ Mode: Local | Engine: DuckDB ]'
+    On a Brev GPU instance (ONLINE):  '[ Mode: GPU | Engine: NVIDIA RAPIDS (cuDF) ]'
+    On a Brev CPU instance (OFFLINE): '[ Mode: Brev CPU | Engine: DuckDB ]'
+    """
+    mode = _read_mode() if _IS_BREV else "OFFLINE"
+    return _COMPUTE_PROFILES.get(mode, _COMPUTE_PROFILES["OFFLINE"])["audit_footer"]
+
+
+def _environment_meta() -> dict:
+    """Return environment + compute fields to embed in endpoint responses."""
+    mode    = _read_mode() if _IS_BREV else "OFFLINE"
+    profile = _COMPUTE_PROFILES.get(mode, _COMPUTE_PROFILES["OFFLINE"])
+    return {
+        "environment":    "brev_gpu" if _IS_BREV and mode == "ONLINE" else
+                          "brev_cpu" if _IS_BREV else "macbook_local",
+        "compute_profile": profile["source_compute"],
+        "engine":          profile["engine"],
+        "audit_footer":    profile["audit_footer"],
+    }
 
 
 # ── Chat history helpers ──────────────────────────────────────────────────────
@@ -245,7 +553,11 @@ async def generate_stream(request: Request):
     When set, chat_history.json is cleared before the request is forwarded,
     preventing state pollution / response loops.
     """
+    logger.info("POST /generate/stream — client: %s", request.client)
     body = await request.json()
+
+    persona = body.pop("persona", "executive").lower().strip()
+    body["persona_context"] = persona   # forward to NAT for dynamic persona routing
 
     # Session reset — wipe history before forwarding to NAT
     if body.get("reset_history"):
@@ -259,6 +571,12 @@ async def generate_stream(request: Request):
         last_content = msgs[-1].get("content", "")[:80]
         print(f"DEBUG: Processing new message: {last_content!r}")
 
+    if msgs and msgs[-1].get("role") == "user":
+        if persona == "analyst":
+            msgs[-1]["content"] += "\n\n[SYSTEM OVERRIDE: ANALYST WORKSPACE ACTIVE. Drop the Miranda Priestly metaphors. Provide raw data, metric tables, and deep analytical exploration. Prioritize data density over tone.]"
+        else:
+            msgs[-1]["content"] += "\n\n[SYSTEM OVERRIDE: EXECUTIVE BRIEF ACTIVE. Maintain your exacting Miranda Priestly persona. Be concise, cutting, use fashion metaphors, and strictly format your output as an Intelligence Brief.]"
+
     _record_user_turn(body)
 
     # Capture prompt for bypass staging before entering generator scope
@@ -269,6 +587,15 @@ async def generate_stream(request: Request):
         assembled: list[str] = []
         client_disconnected = False
 
+        _KEEPALIVE_INTERVAL = 8.0   # seconds before emitting a Strategic Wait heartbeat
+        _KEEPALIVE_MESSAGES = [
+            "Strategic Analysis in progress — the Condé Nast Intelligence Layer is processing.",
+            "Cross-referencing the Style Tribe index. One moment.",
+            "Reviewing the weekly arc. Patience is a virtue, even in fashion.",
+            "The engine is working. Excellence cannot be rushed.",
+        ]
+        _keepalive_seq = 0
+
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
@@ -277,14 +604,29 @@ async def generate_stream(request: Request):
                     json=body,
                     headers={"Accept": "text/event-stream"},
                 ) as nat_resp:
-                    async for raw_line in nat_resp.aiter_lines():
-                        # ── Cancellation checks ──────────────────────────────
+                    _line_iter = nat_resp.aiter_lines().__aiter__()
+                    while True:
+                        # ── Cancellation checks (before waiting for next line) ──
                         if _cancel_flag["active"]:
                             _cancel_flag["active"] = False
                             client_disconnected = True
                             break
                         if await request.is_disconnected():
                             client_disconnected = True
+                            break
+
+                        # ── Wait for next line with keepalive timeout ──────────
+                        try:
+                            raw_line = await asyncio.wait_for(
+                                _line_iter.__anext__(), timeout=_KEEPALIVE_INTERVAL
+                            )
+                        except asyncio.TimeoutError:
+                            # NAT is still thinking — send a visible heartbeat
+                            msg = _KEEPALIVE_MESSAGES[_keepalive_seq % len(_KEEPALIVE_MESSAGES)]
+                            _keepalive_seq += 1
+                            yield f"data: {json.dumps({'type': 'wait', 'content': msg})}\n\n"
+                            continue
+                        except StopAsyncIteration:
                             break
 
                         raw_line = raw_line.strip()
@@ -309,32 +651,19 @@ async def generate_stream(request: Request):
                                 assembled.append(text)
                                 yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
 
-        except Exception:
-            pass  # do NOT emit a fallback message on error
+        except Exception as exc:
+            logger.error("SSE generation error: %s: %s", type(exc).__name__, exc)
+            err_event = {
+                "type": "error",
+                "content": (
+                    f"Connection error ({type(exc).__name__}). "
+                    "The intelligence engine is unavailable — confirm NAT is running on port 8080 and retry."
+                ),
+            }
+            yield f"data: {json.dumps(err_event)}\n\n"
 
         if client_disconnected:
-            # ── Manual Intervention audit trail ─────────────────────────────
-            print(f"DEBUG: Client disconnected mid-generation — staging Manual Intervention. "
-                  f"Prompt: {_prompt_excerpt[:60]!r}")
-            bypass_entry = {
-                "id":               str(uuid.uuid4())[:8],
-                "day":              "",
-                "time":             "",
-                "original_slot":    {},
-                "new_title_id":     "",
-                "new_title":        "",
-                "new_runtime":      0,
-                "bypass_type":      "Manual Intervention",
-                "interrupted_prompt": _prompt_excerpt,
-                "partial_response": "".join(assembled)[:500],
-                "timestamp":        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                "status":           "pending",
-                "audit":            _MANUAL_OVERRIDE_AUDIT,
-            }
-            with _queue_lock:
-                entries = _load_queue()
-                entries.append(bypass_entry)
-                _save_queue(entries)
+            print(f"DEBUG: Client disconnected mid-generation. Prompt: {_prompt_excerpt[:60]!r}")
             with _bypass_lock:
                 _set_bypass_state(_prompt_excerpt)
         else:
@@ -343,38 +672,71 @@ async def generate_stream(request: Request):
             with _bypass_lock:
                 _clear_bypass_state()
 
-            # ── Empty-response / conflict-deadlock enforcement ───────────────
-            # If the agent returned nothing (likely an is_final_conflict loop that
-            # exhausted max_iterations without emitting text), synthesise a hard
-            # Editorial Conflict response so the frontend is never left blank.
+            # ── Empty-response guard — neutral fallback only ────────────────
+            # DVP ("Why isn't anybody ready?") is reserved for explicit
+            # is_final_conflict signals from tools. A plain empty response
+            # (timeout, model silence, keepalive exhaustion) gets a polite
+            # no-response notice instead so the browser is never left blank.
             if not assembled:
-                conflict_msg = (
-                    "# Editorial Conflict Detected\n\n"
-                    "Why isn't anybody ready?\n\n"
-                    "The scheduling engine attempted this move and was stopped by "
-                    "Editorial Policy. A Seasonal Incompatibility was detected: "
-                    "Met Gala content is exclusive to Avant-Garde Wednesday, and "
-                    "Paris Fashion Week content belongs on Ready-to-Wear Saturday "
-                    "or Global Couture Thursday. These two events do not share a "
-                    "marquee — not on this channel, not on any channel I oversee.\n\n"
-                    "Use the Manual Override Queue to stage an alternative title, "
-                    "or ask me to recommend a replacement that respects the arc.\n\n"
-                    f"`{_MANUAL_OVERRIDE_AUDIT}`\n\n"
-                    "That is all."
+                no_resp_msg = (
+                    "# No Response Received\n\n"
+                    "The strategic engine did not return a response this time. "
+                    "This is likely a local CPU timeout — the Nano model needs "
+                    "up to 60 seconds on MacBook hardware.\n\n"
+                    f"`[ {_compute_audit_footer()} ]`\n\nThat is all."
                 )
-                assembled = [conflict_msg]
-                yield f"data: {json.dumps({'type': 'text', 'content': conflict_msg})}\n\n"
-                print("DEBUG: Empty response detected — injected Editorial Conflict fallback.")
+                assembled = [no_resp_msg]
+                yield f"data: {json.dumps({'type': 'text', 'content': no_resp_msg})}\n\n"
+                print("DEBUG: Empty response — injected neutral no-response fallback.")
 
         if assembled:
-            _append_message("assistant", "".join(assembled))
+            full_response = "".join(assembled)
+            _append_message("assistant", full_response)
+
+            # Analyst mode: emit a structured persona_metrics event for the Trace Drawer.
+            # The model includes a json block in its text; this parallel event gives the
+            # frontend a reliable machine-readable signal regardless of model formatting.
+            if persona == "analyst":
+                import re as _re
+                # Extract FAISS chunk metadata from the assembled response if present
+                chunk_pattern = _re.compile(
+                    r'"source"\s*:\s*"([^"]+)".*?"category"\s*:\s*"([^"]+)".*?"score"\s*:\s*([\d.]+)',
+                    _re.DOTALL,
+                )
+                retrieved_chunks = [
+                    {"source": m.group(1), "category": m.group(2), "score": float(m.group(3))}
+                    for m in chunk_pattern.finditer(full_response)
+                ]
+                # Extract RAPIDS technical_evidence block if present in response
+                tech_evidence: dict = {}
+                te_match = _re.search(
+                    r'"technical_evidence"\s*:\s*(\{[^}]+\})', full_response, _re.DOTALL
+                )
+                if te_match:
+                    try:
+                        tech_evidence = json.loads(te_match.group(1))
+                    except Exception:
+                        pass
+                metrics_event = {
+                    "type":               "persona_metrics",
+                    "persona":            "analyst",
+                    "retrieved_chunks":   retrieved_chunks,
+                    "analytics_engine":   _compute_audit_footer(),
+                    "corpus_size":        11,
+                    "technical_evidence": tech_evidence,
+                }
+                yield f"data: {json.dumps(metrics_event)}\n\n"
 
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_gen(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control":     "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection":        "keep-alive",
+        },
     )
 
 
@@ -382,6 +744,9 @@ async def generate_stream(request: Request):
 async def generate(request: Request):
     """Non-streaming proxy for NAT's /generate."""
     body = await request.json()
+
+    persona = body.pop("persona", "executive").lower().strip()
+    body["persona_context"] = persona   # forward to NAT for dynamic persona routing
 
     if body.get("reset_history"):
         with _history_lock:
@@ -391,6 +756,12 @@ async def generate(request: Request):
     msgs = body.get("messages", [])
     if msgs:
         print(f"DEBUG: Processing new message: {msgs[-1].get('content','')[:80]!r}")
+
+    if msgs and msgs[-1].get("role") == "user":
+        if persona == "analyst":
+            msgs[-1]["content"] += "\n\n[SYSTEM OVERRIDE: ANALYST WORKSPACE ACTIVE. Drop the Miranda Priestly metaphors. Provide raw data, metric tables, and deep analytical exploration. Prioritize data density over tone.]"
+        else:
+            msgs[-1]["content"] += "\n\n[SYSTEM OVERRIDE: EXECUTIVE BRIEF ACTIVE. Maintain your exacting Miranda Priestly persona. Be concise, cutting, use fashion metaphors, and strictly format your output as an Intelligence Brief.]"
 
     _record_user_turn(body)
 
@@ -404,19 +775,43 @@ async def generate(request: Request):
             _append_message("assistant", content)
             with _bypass_lock:
                 _clear_bypass_state()
+
+            # Analyst mode: inject persona_metrics block for the frontend Trace Drawer.
+            if persona == "analyst":
+                import re as _re
+                chunk_pattern = _re.compile(
+                    r'"source"\s*:\s*"([^"]+)".*?"category"\s*:\s*"([^"]+)".*?"score"\s*:\s*([\d.]+)',
+                    _re.DOTALL,
+                )
+                retrieved_chunks = [
+                    {"source": m.group(1), "category": m.group(2), "score": float(m.group(3))}
+                    for m in chunk_pattern.finditer(content)
+                ]
+                # Extract RAPIDS technical_evidence block if present in response
+                tech_evidence: dict = {}
+                te_match = _re.search(
+                    r'"technical_evidence"\s*:\s*(\{[^}]+\})', content, _re.DOTALL
+                )
+                if te_match:
+                    try:
+                        tech_evidence = json.loads(te_match.group(1))
+                    except Exception:
+                        pass
+                data["persona_metrics"] = {
+                    "persona":            "analyst",
+                    "retrieved_chunks":   retrieved_chunks,
+                    "analytics_engine":   _compute_audit_footer(),
+                    "corpus_size":        11,
+                    "technical_evidence": tech_evidence,
+                }
         else:
-            # Empty content — inject Editorial Conflict fallback
+            # Empty content — neutral no-response notice (DVP reserved for is_final_conflict)
             fallback = (
-                "# Editorial Conflict Detected\n\n"
-                "Why isn't anybody ready?\n\n"
-                "The scheduling engine was stopped by Editorial Policy. "
-                "A Seasonal Incompatibility was detected: Met Gala content is "
-                "exclusive to Avant-Garde Wednesday; Paris Fashion Week content "
-                "belongs on Ready-to-Wear Saturday or Global Couture Thursday. "
-                "These two events do not share a marquee.\n\n"
-                "Use the Manual Override Queue to stage an alternative, "
-                "or ask me to recommend a seasonally coherent replacement.\n\n"
-                f"`{_MANUAL_OVERRIDE_AUDIT}`\n\nThat is all."
+                "# No Response Received\n\n"
+                "The strategic engine returned no content. "
+                "This is typically a local CPU timeout — please allow up to 60 seconds "
+                "for the Nano model on MacBook hardware, or rephrase your request.\n\n"
+                f"`[ {_compute_audit_footer()} ]`\n\nThat is all."
             )
             data.setdefault("choices", [{}])
             data["choices"][0].setdefault("message", {})["content"] = fallback
@@ -470,11 +865,6 @@ def api_chat_stop():
         "audit":           _MANUAL_OVERRIDE_AUDIT,
     }
 
-    with _queue_lock:
-        entries = _load_queue()
-        entries.append(bypass_entry)
-        _save_queue(entries)
-
     with _bypass_lock:
         _set_bypass_state(last_user[:300])
 
@@ -482,12 +872,154 @@ def api_chat_stop():
     return {
         "stopped":            True,
         "bypass_id":          bypass_entry["id"],
-        "message":            "Generation cancelled. Interrupted request staged in Override Queue.",
-        "queue_depth":        len([e for e in entries if e.get("status") == "pending"]),
+        "message":            "Generation cancelled.",
         "controller_status":  "MANUAL_BYPASS",
         "active_gatekeeper":  "Tiger Team",
         "_audit":             _MANUAL_OVERRIDE_AUDIT,
     }
+
+
+# ── /api/chat — keyword-bypass chat route ────────────────────────────────────
+
+@app.post("/api/chat")
+async def api_chat(request: Request):
+    """Smart chat endpoint with keyword bypass for TCO, Quad, and EPG queries.
+
+    Detects keywords in the last user message:
+      - 'Quad' / 'loyalty tier' / 'audience composition' → get_quad_analysis()
+      - 'EPG' / 'schedule' / 'airing'                    → get_current_schedule()
+      - 'TCO' / 'kpi' / 'active viewers' / 'watch time'  → get_audience_metrics()
+
+    Keyword hits call tools.py directly — no NeMo Agent round-trip, no timeout risk.
+    Non-keyword messages are forwarded to NAT with reset_history=True so multi-turn
+    context errors cannot accumulate.
+
+    Always clears local chat history before processing.
+    """
+    body = await request.json()
+
+    # Always reset — no multi-turn memory errors
+    with _history_lock:
+        _save_history([])
+
+    msgs      = body.get("messages", [])
+    user_text = (msgs[-1].get("content", "") if msgs else "").strip()
+    _record_user_turn(body)
+
+    bypass_type = _detect_bypass(user_text)
+    if bypass_type:
+        market  = _extract_market(user_text)
+        segment = ""
+        if "female" in user_text.lower():
+            segment = "Female"
+        elif "lgbt" in user_text.lower():
+            segment = "LGBT+"
+
+        # SSE stream: send heartbeat immediately so browser sees 200 OK,
+        # then deliver the full brief without any NAT round-trip.
+        async def _bypass_stream():
+            yield f"data: {json.dumps({'type': 'heartbeat', 'content': 'Couture One Intelligence Layer — processing request.'})}\n\n"
+            brief = _bypass_direct(bypass_type, market, segment)
+            _append_message("assistant", brief)
+            yield f"data: {json.dumps({'type': 'text', 'content': brief, 'bypassed': True})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            _bypass_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control":      "no-cache",
+                "X-Accel-Buffering":  "no",
+                "Connection":         "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+
+    # Non-keyword: proxy to NAT, forcing context reset
+    body["reset_history"] = True
+    _prompt_excerpt       = user_text[:300]
+    _cancel_flag["active"] = False
+
+    async def _nat_fallback():
+        assembled: list[str] = []
+        _KEEPALIVE_INTERVAL  = 8.0
+        _KEEPALIVE_MESSAGES  = [
+            "Strategic Analysis in progress — the Condé Nast Intelligence Layer is processing.",
+            "Cross-referencing the Style Tribe index. One moment.",
+            "Reviewing the weekly arc. Patience is a virtue, even in fashion.",
+            "The engine is working. Excellence cannot be rushed.",
+        ]
+        _seq = 0
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream(
+                    "POST",
+                    f"{NAT_BASE}/generate/stream",
+                    json=body,
+                    headers={"Accept": "text/event-stream"},
+                ) as nat_resp:
+                    _line_iter = nat_resp.aiter_lines().__aiter__()
+                    while True:
+                        if _cancel_flag["active"]:
+                            _cancel_flag["active"] = False
+                            break
+                        if await request.is_disconnected():
+                            break
+                        try:
+                            raw = await asyncio.wait_for(
+                                _line_iter.__anext__(), timeout=_KEEPALIVE_INTERVAL
+                            )
+                        except asyncio.TimeoutError:
+                            msg = _KEEPALIVE_MESSAGES[_seq % len(_KEEPALIVE_MESSAGES)]
+                            _seq += 1
+                            yield f"data: {json.dumps({'type': 'wait', 'content': msg})}\n\n"
+                            continue
+                        except StopAsyncIteration:
+                            break
+                        raw = raw.strip()
+                        if not raw:
+                            continue
+                        if raw.startswith("intermediate_data:"):
+                            trace = _parse_intermediate_line(raw[len("intermediate_data:"):].strip())
+                            if trace:
+                                yield f"data: {json.dumps(trace)}\n\n"
+                            continue
+                        if raw.startswith("data:"):
+                            payload = raw[5:].strip()
+                            if payload == "[DONE]":
+                                break
+                            text = _parse_data_line(payload)
+                            if text:
+                                assembled.append(text)
+                                yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
+        except Exception:
+            pass
+
+        if not assembled:
+            fallback = (
+                "# No Response Received\n\n"
+                "The strategic engine timed out. "
+                "For instant results use keywords: **Quad**, **EPG**, or **TCO** — "
+                "these bypass the agent entirely.\n\n"
+                f"`[ {_compute_audit_footer()} ]`\n\nThat is all."
+            )
+            assembled = [fallback]
+            yield f"data: {json.dumps({'type': 'text', 'content': fallback})}\n\n"
+
+        if assembled:
+            _append_message("assistant", "".join(assembled))
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        _nat_fallback(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control":      "no-cache",
+            "X-Accel-Buffering":  "no",
+            "Connection":         "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
 
 
 # ── Direct data endpoints (no LLM round-trip) ────────────────────────────────
@@ -638,8 +1170,9 @@ def api_quads(
                 "Silver":     {"sessions": 0, "viewer_share_pct": 28.0, "avg_completion": 0.72},
                 "Occasional": {"sessions": 0, "viewer_share_pct": 60.0, "avg_completion": 0.38},
             },
-            "_engine": "DuckDB + Parquet",
-            "_source": "Regional Average (synthetic — no matching rows for this filter)",
+            "_engine":       "DuckDB + Parquet",
+            "_source":       "Regional Average (synthetic — no matching rows for this filter)",
+            "_audit_footer": _compute_audit_footer(),
         }
 
     occasional = [r for r in logs if r.get("completion_rate", 0) < 0.60]
@@ -686,7 +1219,8 @@ def api_quads(
             "Silver":     {"sessions": len(silver),     "viewer_share_pct": _pct(v_silver),     "avg_completion": _avg_cr(silver),     "demo_scores": _demo_avg(silver)},
             "Occasional": {"sessions": len(occasional), "viewer_share_pct": _pct(v_occasional), "avg_completion": _avg_cr(occasional), "demo_scores": _demo_avg(occasional)},
         },
-        "_engine": "DuckDB + Parquet",
+        "_engine":       "DuckDB + Parquet",
+        "_audit_footer": _compute_audit_footer(),
         **_bypass_annotation(),
     }
 
@@ -944,7 +1478,10 @@ def api_epg(
         day_data = plan_map.get(dname)
         if not day_data:
             continue
-        for slot in day_data.get("slots", []):
+        filled_slots = _fill_24h_gaps(
+            day_data.get("slots", []), dname, day_data.get("theme", "")
+        )
+        for slot in filled_slots:
             master_list.append({
                 **slot,
                 "_day":   dname,
@@ -1009,11 +1546,500 @@ def api_epg(
         "current_day":  now_day,
         "theme":        now_day_data.get("theme", ""),
         "tribe":        now_day_data.get("tribe", ""),
-        "anchor_index": anchor_index,
+        "anchor_index":  anchor_index,
         "total_in_week": n,
-        "slots":        result_slots,
-        "_engine":      "DuckDB + Parquet" if _DUCKDB_AVAILABLE else "Pandas",
+        "slots":         result_slots,
+        "_engine":       "DuckDB + Parquet" if _DUCKDB_AVAILABLE else "Pandas",
+        "_audit_footer": _compute_audit_footer(),
         **_bypass_annotation(),
+    }
+
+
+# ── 24-hour gap filler ────────────────────────────────────────────────────────
+
+def _fill_24h_gaps(slots: list[dict], day: str = "", theme: str = "") -> list[dict]:
+    """Return a complete 00:00–24:00 slot list with Off-Air fillers in every gap.
+
+    Rules:
+    - Slots must be pre-sorted by time.
+    - Gaps ≥ 1 minute get a filler block (title = 'Continuous Stream').
+    - A filler from 22:00–00:00 uses 'Late Night Continuous' to distinguish sign-off.
+    - Each filler carries is_filler: true so the frontend can style it differently.
+    - Total coverage is always exactly 1440 minutes (00:00 → 24:00 / next midnight).
+    """
+    filled: list[dict] = []
+    cursor = 0  # minutes from midnight
+
+    sorted_slots = sorted(slots, key=lambda s: s.get("time", "00:00"))
+
+    for slot in sorted_slots:
+        try:
+            h, m   = map(int, slot["time"].split(":"))
+        except (KeyError, ValueError):
+            continue
+        start_min = h * 60 + m
+        block_min = int(slot.get("block_duration_min", slot.get("runtime_min", 90)))
+
+        # Gap before this slot
+        if start_min > cursor:
+            gap = start_min - cursor
+            gh, gm = divmod(cursor, 60)
+            label = "Late Night Continuous" if cursor >= 22 * 60 or cursor < 6 * 60 else "Continuous Stream"
+            filled.append(_filler_slot(f"{gh:02d}:{gm:02d}", gap, day, theme, label))
+
+        filled.append(slot)
+        cursor = start_min + block_min
+
+    # Tail gap: from last slot end to 24:00
+    if cursor < 1440:
+        gap = 1440 - cursor
+        gh, gm = divmod(cursor % 1440, 60)
+        label = "Late Night Continuous" if cursor >= 22 * 60 or cursor < 6 * 60 else "Continuous Stream"
+        filled.append(_filler_slot(f"{gh:02d}:{gm:02d}", gap, day, theme, label))
+
+    return filled
+
+
+def _filler_slot(time: str, duration_min: int, day: str, theme: str, label: str) -> dict:
+    h, m  = map(int, time.split(":"))
+    hut   = 0.18 if (h < 6 or h >= 22) else 0.55
+    return {
+        "time":              time,
+        "show_id":           "off_air",
+        "title":             label,
+        "runtime_min":       duration_min,
+        "block_duration_min": duration_min,
+        "interstitial_min":  0,
+        "tribe":             "",
+        "target_age":        "",
+        "event_type":        "off_air",
+        "block_label":       "Off-Air",
+        "daypart":           ("Overnight" if h < 6 or h >= 22 else
+                              "Daytime"   if h < 16 else
+                              "Prime Time" if h < 22 else "Late Night"),
+        "hut_estimate":      hut,
+        "day":               day,
+        "theme":             theme,
+        "is_filler":         True,
+    }
+
+
+@app.get("/api/epg/full-day")
+def api_epg_full_day(
+    day:          str = Query(default="", description="Day name, e.g. 'Wednesday'. Defaults to today."),
+    current_time: str = Query(default="", description="ISO timestamp for 'now'. Defaults to UTC now."),
+):
+    """Complete 24-hour TV Guide grid for a single day, gap-filled to 1440 minutes.
+
+    Every minute of the broadcast day is covered — real slots plus Off-Air/Continuous
+    Stream fillers in any gap. The frontend can render this as a pixel-perfect
+    vertical timeline at any PX_PER_MIN scale without dead zones.
+
+    Each slot includes:
+      time              HH:MM start
+      ends_at           HH:MM end (start + block_duration_min)
+      block_duration_min total slot height in minutes
+      is_filler         true for Off-Air blocks
+      status            'past' | 'live' | 'future'
+      isLive            true for the currently-airing slot
+      start_offset_min  minutes from midnight (for CSS top calculation)
+    """
+    weekly   = _load_json("data/weekly_schedule.json")
+    plan     = weekly.get("weekly_plan", [])
+    if not plan:
+        return {"error": "Weekly plan not yet generated."}
+
+    try:
+        now = (
+            datetime.fromisoformat(current_time).replace(tzinfo=timezone.utc)
+            if current_time
+            else datetime.now(timezone.utc)
+        )
+    except ValueError:
+        now = datetime.now(timezone.utc)
+
+    target_day = day.strip().title() if day.strip() else now.strftime("%A")
+    plan_map   = {d["day_of_week"].title(): d for d in plan}
+    day_data   = plan_map.get(target_day)
+
+    if not day_data:
+        available = list(plan_map.keys())
+        return {"error": f"Day '{target_day}' not found.", "available_days": available}
+
+    raw_slots = day_data.get("slots", [])
+    theme     = day_data.get("theme", "")
+    filled    = _fill_24h_gaps(raw_slots, target_day, theme)
+
+    now_min   = now.hour * 60 + now.minute
+    now_day   = now.strftime("%A")
+
+    result: list[dict] = []
+    for slot in filled:
+        try:
+            sh, sm = map(int, slot["time"].split(":"))
+        except ValueError:
+            continue
+        start_min = sh * 60 + sm
+        block_min = int(slot.get("block_duration_min", 90))
+        end_min   = (start_min + block_min) % 1440
+        eh, em    = divmod(end_min, 60)
+
+        if target_day != now_day:
+            status = "future"
+            is_live = False
+        elif start_min <= now_min < start_min + block_min:
+            status  = "live"
+            is_live = True
+        elif start_min + block_min <= now_min:
+            status  = "past"
+            is_live = False
+        else:
+            status  = "future"
+            is_live = False
+
+        result.append({
+            **slot,
+            "ends_at":          f"{eh:02d}:{em:02d}",
+            "start_offset_min": start_min,
+            "status":           status,
+            "isLive":           is_live,
+        })
+
+    live_idx = next((i for i, s in enumerate(result) if s.get("isLive")), None)
+
+    return {
+        "day":             target_day,
+        "date":            day_data.get("date", ""),
+        "theme":           theme,
+        "tribe":           day_data.get("tribe", ""),
+        "total_minutes":   1440,
+        "slot_count":      len(result),
+        "filler_count":    sum(1 for s in result if s.get("is_filler")),
+        "live_index":      live_idx,
+        "now":             now.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+        "now_offset_min":  now_min if target_day == now_day else None,
+        "slots":           result,
+        "_engine":         "DuckDB + Parquet" if _DUCKDB_AVAILABLE else "Pandas",
+        "_audit_footer":   _compute_audit_footer(),
+        **_bypass_annotation(),
+    }
+
+
+# ── Audience Analytics Dashboard ─────────────────────────────────────────────
+
+@app.get("/api/analytics/dashboard")
+def api_analytics_dashboard(
+    dma:     str = Query(default="", description="Market name, e.g. 'Dallas' or 'Dallas (DMA 4)'"),
+    segment: str = Query(default="", description="primary_demographic filter, e.g. 'Female' or 'LGBT+'"),
+):
+    """Aggregate audience analytics for the dashboard UI.
+
+    Combines nielsen_telemetry (aggregate reach metrics) with engagement_logs
+    (session-level completion and hourly behaviour).  All arrays are Recharts-ready.
+
+    Returns:
+      summary          — scalar KPIs (total_active_viewers, engagement_rate, …)
+      hourly_trend     — 24-element array [{hour, label, viewers, completion_rate,
+                          is_prime_time, sessions}] — one entry per clock hour
+      demographic      — [{name, viewers, completion_rate, value_pct}] for pie charts
+      daypart          — [{daypart, viewers, sessions, avg_completion, share_pct}]
+      top_titles       — top-10 titles by viewers [{title, viewers, rating_pct,
+                          completion_rate, daypart, market}]
+      _meta            — filter echoes + engine + record counts
+    """
+    t0 = datetime.now(timezone.utc)
+
+    # ── Load + filter Nielsen telemetry ──────────────────────────────────────
+    nt_where, nt_params = [], []
+    market_key = _normalise_market(dma) if dma else ""
+    if market_key:
+        nt_where.append("lower(trim(market)) LIKE ?")
+        nt_params.append(f"%{market_key}%")
+
+    nielsen = _query_parquet("data/nielsen_telemetry.parquet",
+                             where=" AND ".join(nt_where), params=nt_params)
+    if not nielsen:
+        nielsen = _load_json("data/nielsen_telemetry.json")
+        if market_key:
+            nielsen = [r for r in nielsen if market_key in r.get("market", "").lower()]
+
+    # ── Load + filter engagement logs ─────────────────────────────────────────
+    el_where, el_params = [], []
+    if market_key:
+        el_where.append("lower(trim(market)) LIKE ?")
+        el_params.append(f"%{market_key}%")
+    if segment:
+        el_where.append("lower(trim(primary_demographic)) = ?")
+        el_params.append(segment.strip().lower())
+
+    logs = _query_parquet("data/engagement_logs.parquet",
+                          where=" AND ".join(el_where), params=el_params)
+    if not logs:
+        logs = _load_json("data/engagement_logs.json")
+        if market_key:
+            logs = [r for r in logs if market_key in r.get("market", "").lower()]
+        if segment:
+            logs = [r for r in logs
+                    if r.get("primary_demographic", "").strip().lower() == segment.strip().lower()]
+
+    # ── Summary KPIs ──────────────────────────────────────────────────────────
+    def _sum(rows, key):
+        return sum(r.get(key) or 0 for r in rows)
+
+    def _avg(rows, key):
+        vals = [r.get(key) or 0 for r in rows]
+        return round(sum(vals) / max(len(vals), 1), 4)
+
+    total_viewers    = int(_sum(nielsen, "Audience_HH_or_Persons"))
+    total_impressions = int(_sum(nielsen, "GrossImpressions"))
+    total_media_cost  = round(_sum(nielsen, "MediaCost"), 2)
+    avg_rating        = round(_avg(nielsen, "Rating_Pct"), 4)
+    avg_share         = round(_avg(nielsen, "Share_Pct"), 4)
+    avg_grps          = round(_avg(nielsen, "GRPs"), 4)
+
+    engagement_rate   = round(_avg(logs, "completion_rate"), 4)
+
+    prime_nielsen     = [r for r in nielsen if r.get("is_prime_time")]
+    prime_viewers     = int(_sum(prime_nielsen, "Audience_HH_or_Persons"))
+    prime_pct         = round(prime_viewers / max(total_viewers, 1) * 100, 1)
+
+    # ── Hourly Viewership Trend (00–23) ───────────────────────────────────────
+    # Buckets: keyed by integer hour, accumulate viewers + completion + session count
+    _PRIME_HOURS = set(range(16, 22))
+
+    hour_viewers:     dict[int, int]   = {h: 0 for h in range(24)}
+    hour_completion:  dict[int, list]  = {h: [] for h in range(24)}
+    hour_sessions:    dict[int, int]   = {h: 0 for h in range(24)}
+
+    for r in logs:
+        ts = r.get("timestamp", "")
+        try:
+            h = int(ts[11:13]) if len(ts) >= 13 else -1
+        except (ValueError, TypeError):
+            h = -1
+        if 0 <= h <= 23:
+            hour_viewers[h]    += int(r.get("Audience_HH_or_Persons") or 0)
+            hour_sessions[h]   += 1
+            cr = r.get("completion_rate")
+            if cr is not None:
+                hour_completion[h].append(float(cr))
+
+    def _hour_label(h: int) -> str:
+        suffix = "AM" if h < 12 else "PM"
+        display = h if h <= 12 else h - 12
+        if display == 0:
+            display = 12
+        return f"{display} {suffix}"
+
+    hourly_trend = [
+        {
+            "hour":            h,
+            "label":           _hour_label(h),
+            "time":            f"{h:02d}:00",
+            "viewers":         hour_viewers[h],
+            "sessions":        hour_sessions[h],
+            "completion_rate": round(sum(hour_completion[h]) / max(len(hour_completion[h]), 1), 4),
+            "is_prime_time":   h in _PRIME_HOURS,
+        }
+        for h in range(24)
+    ]
+
+    # ── Demographic Breakdown (pie / donut chart) ─────────────────────────────
+    from collections import defaultdict
+
+    demo_viewers:     dict[str, int]   = defaultdict(int)
+    demo_completion:  dict[str, list]  = defaultdict(list)
+    demo_sessions:    dict[str, int]   = defaultdict(int)
+
+    for r in logs:
+        demo = r.get("primary_demographic", "Unknown") or "Unknown"
+        demo_viewers[demo]   += int(r.get("Audience_HH_or_Persons") or 0)
+        demo_sessions[demo]  += 1
+        cr = r.get("completion_rate")
+        if cr is not None:
+            demo_completion[demo].append(float(cr))
+
+    total_demo_viewers = max(sum(demo_viewers.values()), 1)
+    demographic = sorted(
+        [
+            {
+                "name":            demo,
+                "viewers":         demo_viewers[demo],
+                "sessions":        demo_sessions[demo],
+                "completion_rate": round(sum(demo_completion[demo]) / max(len(demo_completion[demo]), 1), 4),
+                "value_pct":       round(demo_viewers[demo] / total_demo_viewers * 100, 1),
+            }
+            for demo in demo_viewers
+        ],
+        key=lambda x: x["viewers"],
+        reverse=True,
+    )
+
+    # ── Daypart Breakdown (bar chart) ────────────────────────────────────────
+    dp_viewers:    dict[str, int]  = defaultdict(int)
+    dp_sessions:   dict[str, int]  = defaultdict(int)
+    dp_completion: dict[str, list] = defaultdict(list)
+
+    for r in logs:
+        dp = ("Prime Time" if r.get("is_prime_time")
+              else "Overnight" if 0 <= int((r.get("timestamp", "T00")[11:13] or 0)) < 6
+              else "Daytime")
+        try:
+            h_val = int(r.get("timestamp", "T00")[11:13])
+            dp = ("Prime Time" if 16 <= h_val < 22
+                  else "Late Night" if 22 <= h_val or h_val < 1
+                  else "Overnight" if h_val < 6
+                  else "Daytime")
+        except (ValueError, TypeError):
+            dp = "Unknown"
+        dp_viewers[dp]   += int(r.get("Audience_HH_or_Persons") or 0)
+        dp_sessions[dp]  += 1
+        cr = r.get("completion_rate")
+        if cr is not None:
+            dp_completion[dp].append(float(cr))
+
+    total_dp_viewers = max(sum(dp_viewers.values()), 1)
+    _DP_ORDER = ["Overnight", "Daytime", "Prime Time", "Late Night"]
+    daypart = [
+        {
+            "daypart":         dp,
+            "viewers":         dp_viewers[dp],
+            "sessions":        dp_sessions[dp],
+            "avg_completion":  round(sum(dp_completion[dp]) / max(len(dp_completion[dp]), 1), 4),
+            "share_pct":       round(dp_viewers[dp] / total_dp_viewers * 100, 1),
+        }
+        for dp in _DP_ORDER
+        if dp in dp_viewers
+    ]
+
+    # ── Top Titles (horizontal bar chart) ─────────────────────────────────────
+    title_map: dict[str, dict] = {}
+    for r in nielsen:
+        t = r.get("title", "")
+        if not t:
+            continue
+        if t not in title_map:
+            title_map[t] = {
+                "title":       t,
+                "viewers":     0,
+                "rating_pct":  0.0,
+                "share_pct":   0.0,
+                "grps":        0.0,
+                "media_cost":  0.0,
+                "daypart":     r.get("daypart", ""),
+                "market":      r.get("market", ""),
+                "_count":      0,
+            }
+        title_map[t]["viewers"]    += int(r.get("Audience_HH_or_Persons") or 0)
+        title_map[t]["rating_pct"] += float(r.get("Rating_Pct") or 0)
+        title_map[t]["share_pct"]  += float(r.get("Share_Pct") or 0)
+        title_map[t]["grps"]       += float(r.get("GRPs") or 0)
+        title_map[t]["media_cost"] += float(r.get("MediaCost") or 0)
+        title_map[t]["_count"]     += 1
+
+    # Merge completion rate from logs
+    log_cr: dict[str, list] = defaultdict(list)
+    for r in logs:
+        t = r.get("title", "")
+        cr = r.get("completion_rate")
+        if t and cr is not None:
+            log_cr[t].append(float(cr))
+
+    top_titles = sorted(
+        [
+            {
+                "title":           t,
+                "viewers":         d["viewers"],
+                "rating_pct":      round(d["rating_pct"] / d["_count"], 4),
+                "share_pct":       round(d["share_pct"]  / d["_count"], 4),
+                "grps":            round(d["grps"],  4),
+                "media_cost":      round(d["media_cost"], 2),
+                "completion_rate": round(sum(log_cr[t]) / max(len(log_cr[t]), 1), 4),
+                "daypart":         d["daypart"],
+                "market":          d["market"],
+            }
+            for t, d in title_map.items()
+        ],
+        key=lambda x: x["viewers"],
+        reverse=True,
+    )[:10]
+
+    # ── Latency ───────────────────────────────────────────────────────────────
+    latency_ms = int((datetime.now(timezone.utc) - t0).total_seconds() * 1000)
+    engine = "DuckDB + Parquet" if _DUCKDB_AVAILABLE else "Pandas"
+
+    return {
+        "summary": {
+            "total_active_viewers":  total_viewers,
+            "total_impressions":     total_impressions,
+            "total_media_cost":      total_media_cost,
+            "engagement_rate":       engagement_rate,
+            "avg_rating_pct":        avg_rating,
+            "avg_share_pct":         avg_share,
+            "avg_grps":              avg_grps,
+            "prime_time_viewers":    prime_viewers,
+            "prime_time_pct":        prime_pct,
+            "nielsen_records":       len(nielsen),
+            "engagement_records":    len(logs),
+        },
+        "hourly_trend":  hourly_trend,
+        "demographic":   demographic,
+        "daypart":       daypart,
+        "top_titles":    top_titles,
+        "_meta": {
+            "dma":             dma or "All Markets",
+            "segment":         segment or "All",
+            "engine":          engine,
+            "latency_ms":      latency_ms,
+            "sources":         ["nielsen_telemetry.parquet", "engagement_logs.parquet"],
+            "audit_footer":    _compute_audit_footer(),
+            **_environment_meta(),
+        },
+        **_bypass_annotation(),
+    }
+
+
+# ── Config / tunnel discovery ────────────────────────────────────────────────
+
+@app.get("/api/config")
+def api_config(request: Request):
+    """Self-discovery endpoint. Returns the public base URL for this sidecar.
+
+    Checks the local ngrok agent API for an active tunnel forwarding to this port.
+    Falls back to the request's own base URL if ngrok is not running.
+    Paste the returned api_base into your Lovable project as the API base URL.
+    """
+    try:
+        import httpx as _hx
+        tunnels = _hx.get("http://localhost:4040/api/tunnels", timeout=1.0).json()
+        for t in tunnels.get("tunnels", []):
+            if "8081" in t.get("config", {}).get("addr", ""):
+                public_url = t["public_url"].rstrip("/")
+                break
+        else:
+            public_url = str(request.base_url).rstrip("/")
+    except Exception:
+        public_url = str(request.base_url).rstrip("/")
+
+    return {
+        "api_base":    public_url,
+        "tunnel_active": "ngrok" in public_url or "ngrok-free" in public_url,
+        "endpoints": {
+            "health":          f"{public_url}/health",
+            "chat_stream":     f"{public_url}/generate/stream",
+            "chat":            f"{public_url}/generate",
+            "epg":             f"{public_url}/api/epg",
+            "epg_full_day":    f"{public_url}/api/epg/full-day",
+            "quads":           f"{public_url}/api/quads",
+            "nielsen":         f"{public_url}/api/nielsen",
+            "dashboard":       f"{public_url}/api/analytics/dashboard",
+            "queue":           f"{public_url}/api/queue",
+            "queue_override":  f"{public_url}/api/queue-override",
+            "apply_queue":     f"{public_url}/api/apply-queue",
+            "chat_bypass":     f"{public_url}/api/chat",
+            "stop":            f"{public_url}/api/chat/stop",
+            "download_report": f"{public_url}/download_report",
+        },
     }
 
 
@@ -1021,12 +2047,20 @@ def api_epg(
 
 @app.get("/health")
 def health():
-    mode = _read_mode()
+    mode    = _read_mode() if _IS_BREV else "OFFLINE"
+    profile = _COMPUTE_PROFILES[mode]
     return {
-        "status":       "alive",
-        "engine":       mode,
-        "gpu_detected": HAS_GPU,
-        **{k: _COMPUTE_PROFILES[mode][k] for k in ("source_compute", "latency_ms")},
+        "status":          "TIGER_TEAM_READY",
+        "mode":            mode,
+        "gpu_detected":    HAS_GPU,
+        "is_brev":         _IS_BREV,
+        "source_compute":  profile["source_compute"],
+        "engine":          profile["engine"],
+        "latency_ms":      profile["latency_ms"],
+        "audit_footer":    profile["audit_footer"],
+        "cors":            "allow_origins=['*']",
+        "port":            8081,
+        **_environment_meta(),
     }
 
 
@@ -1183,4 +2217,13 @@ def download_report(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8081, log_level="info")
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8081,
+        log_level="info",
+        timeout_keep_alive=60,    # wait 60s on idle connections before closing
+        loop="asyncio",           # explicit event loop — avoids uvloop surprises on macOS
+        ws_ping_interval=20,      # WebSocket keep-alive (belt-and-suspenders)
+        ws_ping_timeout=60,
+    )

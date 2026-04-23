@@ -169,10 +169,30 @@ nat serve --config_file workflow-config.yml
 `setup_brev.sh` auto-detects CUDA version and installs the matching `cudf-cu12` / `cuml-cu12` build from `pypi.nvidia.com`.
 
 ### Frontend (Lovable + ngrok)
+
+The sidecar on **port 8081** serves all `/api/*` endpoints **and** proxies
+`/generate` + `/generate/stream` to NAT internally.  
+Lovable only needs one URL — the 8081 tunnel.
+
 ```bash
-ngrok http 8080
-# paste the https tunnel URL into your Lovable project as the API base
+# Terminal 1 — NAT agent (must be running)
+nat serve --config_file workflow-config.yml
+
+# Terminal 2 — Sidecar (REST + proxy)
+python api_server.py
+
+# Terminal 3 — Tunnel (expose sidecar to Lovable)
+ngrok http 8081
 ```
+
+Then call `/api/config` to get the full URL map:
+
+```bash
+curl https://<your-ngrok-subdomain>.ngrok-free.app/api/config
+# → { "api_base": "https://...", "endpoints": { "dashboard": "...", ... } }
+```
+
+Paste `api_base` into your Lovable project as the single API base URL.
 
 CORS is pre-configured in `workflow-config.yml`:
 ```yaml

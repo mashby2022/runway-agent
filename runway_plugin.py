@@ -91,6 +91,18 @@ class StrategicFrictionToolConfig(FunctionBaseConfig, name="runway_strategic_fri
     """Pre-flight Event Exclusivity check — returns is_final_conflict before a slot move."""
 
 
+class QuadAnalysisToolConfig(FunctionBaseConfig, name="runway_quad_analysis"):
+    """Audience Composition (Gold/Silver/Occasional) for a DMA market. Never returns empty."""
+
+
+class AudienceMetricsToolConfig(FunctionBaseConfig, name="runway_audience_metrics"):
+    """Channel KPI metrics: active_viewers, avg_watch_time, peak_concurrent, engagement_rate."""
+
+
+class RetrievalToolConfig(FunctionBaseConfig, name="runway_retrieval"):
+    """Semantic FAISS vector retrieval from the historical insights vault."""
+
+
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
 # FunctionInfo.from_fn requires exactly one parameter; use Pydantic models
 # for tools that originally took two arguments.
@@ -135,6 +147,16 @@ class UpdateWeeklySlotQuery(BaseModel):
 class StrategicFrictionQuery(BaseModel):
     title: str = Field(description="Title of the content to check, e.g. 'The First Monday in May'")
     target_day: str = Field(description="Destination day name, e.g. 'Saturday'")
+
+
+class QuadAnalysisQuery(BaseModel):
+    market:  str = Field(default="", description="Market name or DMA string, e.g. 'Dallas' or 'Dallas (DMA 4)'")
+    segment: str = Field(default="", description="Optional demographic filter, e.g. 'Female' or 'LGBT+'")
+
+
+class AudienceMetricsQuery(BaseModel):
+    market:  str = Field(default="", description="Market name or DMA string, e.g. 'Dallas' or 'Dallas (DMA 4)'")
+    segment: str = Field(default="", description="Optional demographic filter, e.g. 'Female' or 'LGBT+'")
 
 
 # ── Function registrations ───────────────────────────────────────────────────
@@ -401,6 +423,52 @@ async def _register_generate_weekly_plan(
     )
 
 
+@register_function(config_type=QuadAnalysisToolConfig)
+async def _register_quad_analysis(_config: QuadAnalysisToolConfig, _builder: Builder):
+    from tools import get_quad_analysis
+
+    async def fn(query: QuadAnalysisQuery) -> str:
+        return get_quad_analysis(query.market, query.segment)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Audience Composition analysis — Gold / Silver / Occasional loyalty tiers "
+            "for a given DMA market, expressed as viewer-weighted percentages. "
+            "Gold = ≥85% completion (devoted audience). "
+            "Silver = 60–85% completion (regular viewers). "
+            "Occasional = <60% completion (light viewers). "
+            "Pass market as a city name or DMA string (e.g. 'Dallas (DMA 4)'). "
+            "Always returns a non-empty result — falls back to Simulated Demo Distribution "
+            "if DuckDB returns no rows. Engine field indicates live vs. simulated source. "
+            "Use this when asked about audience composition, quad analysis, or loyalty tiers."
+        ),
+    )
+
+
+@register_function(config_type=AudienceMetricsToolConfig)
+async def _register_audience_metrics(_config: AudienceMetricsToolConfig, _builder: Builder):
+    from tools import get_audience_metrics
+
+    async def fn(query: AudienceMetricsQuery) -> str:
+        return get_audience_metrics(query.market, query.segment)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Channel audience performance KPIs for a DMA market. "
+            "Returns four Nielsen-aligned metrics: "
+            "active_viewers (unique viewers in the window), "
+            "avg_watch_time (average minutes watched per session), "
+            "peak_concurrent (peak simultaneous viewers), "
+            "engagement_rate (ratio of engaged sessions ≥2min to total sessions). "
+            "Always returns a non-empty result — falls back to Demo Buffer if DuckDB "
+            "returns no rows. Use this for dashboard KPIs, audience health, or "
+            "viewership performance questions."
+        ),
+    )
+
+
 @register_function(config_type=StrategicFrictionToolConfig)
 async def _register_strategic_friction(
     _config: StrategicFrictionToolConfig, _builder: Builder
@@ -448,5 +516,24 @@ async def _register_update_weekly_slot(
             "Youth Friday, a strategic_warning is returned alongside the completed move. "
             "Pass from_day/to_day as day names (e.g. 'Monday') and from_time/to_time as "
             "HH:MM strings (e.g. '20:00'). Requires an existing weekly plan."
+        ),
+    )
+
+
+@register_function(config_type=RetrievalToolConfig)
+async def _register_retrieval(_config: RetrievalToolConfig, _builder: Builder):
+    from tools import retrieve_historical_insights
+
+    async def fn(query: str) -> str:
+        return retrieve_historical_insights(query)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Semantic vector search over the historical insights vault. "
+            "Returns the top 2 matching excerpts from a FAISS IndexFlatIP index "
+            "covering: 2025 Q4 Audience Report, Cultural Signals Tracker Mar 2026, "
+            "and Met Gala 2024 Post-Mortem. "
+            "Use this to ground recommendations in historical evidence and cultural signals."
         ),
     )
