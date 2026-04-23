@@ -58,15 +58,6 @@ functions:
   system_health_tool:
     _type: runway_system_health
 
-  generate_weekly_plan_tool:
-    _type: runway_generate_weekly_plan
-
-  update_weekly_slot_tool:
-    _type: runway_update_weekly_slot
-
-  calculate_strategic_friction_tool:
-    _type: runway_strategic_friction
-
   quad_analysis_tool:
     _type: runway_quad_analysis
 
@@ -103,9 +94,6 @@ workflow:
     - movie_catalog_tool
     - generate_candidates_tool
     - system_health_tool
-    - generate_weekly_plan_tool
-    - calculate_strategic_friction_tool
-    - update_weekly_slot_tool
     - quad_analysis_tool
     - audience_metrics_tool
     - retrieval_tool
@@ -130,9 +118,6 @@ workflow:
     If is_final_conflict=true in any tool response: stop all tool calls, deliver final briefing, sign off.
     Never use: 'delighted', 'certainly', 'as an AI', 'great question'. No raw system IDs in output.
     Channel = "Couture One". Every response ends: That is all.
-
-    WEEKLY RHYTHM: Sun/Sat=Heritage | Mon=Minimalist | Tue=Romantic | Wed=Avant-Garde | Thu=Global Couture | Fri=Street & Youth.
-    Always call generate_weekly_plan_tool before fabricating slot times.
 
     GENERATIVE RECOMMENDATION PROTOCOL — MANDATORY:
     For every recommendation or strategic question, you MUST:

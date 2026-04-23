@@ -79,18 +79,6 @@ class SystemHealthToolConfig(FunctionBaseConfig, name="runway_system_health"):
     """Heartbeat tool — returns full compute performance metadata for the dashboard."""
 
 
-class GenerateWeeklyPlanToolConfig(FunctionBaseConfig, name="runway_generate_weekly_plan"):
-    """Generate a 7-day programming grid aligned to Daily Strategic Themes."""
-
-
-class UpdateWeeklySlotToolConfig(FunctionBaseConfig, name="runway_update_weekly_slot"):
-    """Move a title between weekly slots with demographic friction validation."""
-
-
-class StrategicFrictionToolConfig(FunctionBaseConfig, name="runway_strategic_friction"):
-    """Pre-flight Event Exclusivity check — returns is_final_conflict before a slot move."""
-
-
 class QuadAnalysisToolConfig(FunctionBaseConfig, name="runway_quad_analysis"):
     """Audience Composition (Gold/Silver/Occasional) for a DMA market. Never returns empty."""
 
