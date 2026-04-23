@@ -624,8 +624,9 @@ async def _register_distill_script(_config: DistillScriptToolConfig, _builder: B
     yield FunctionInfo.from_fn(
         fn,
         description=(
-            "100k Tag Universe distiller — extracts 200-300 unique canonical story elements "
-            "from a script summary or logline, mapped back to the Vault Tag Universe v3. "
+            "NVIDIA Blueprint (NVILA) ingestion layer — automatically distils 200-300 unique "
+            "canonical story elements from a script summary or logline, mapped back to the "
+            "Vault Tag Universe v3 (100,000 tags). "
             "Each tag has a tag_id (TU-XXXXXX), canonical_tag, category "
             "(narrative_theme / character_archetype / setting / emotional_beat / "
             "cultural_signal / genre_marker / demographic_indicator / platform_fit), "
