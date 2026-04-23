@@ -103,6 +103,18 @@ class RetrievalToolConfig(FunctionBaseConfig, name="runway_retrieval"):
     """Semantic FAISS vector retrieval from the historical insights vault."""
 
 
+class TfValidationToolConfig(FunctionBaseConfig, name="runway_tf_validation"):
+    """Validate LLM thematic scores against TF supervised demographic reach models."""
+
+
+class GraphRelationshipToolConfig(FunctionBaseConfig, name="runway_graph_relationship"):
+    """RAPIDS cuGraph — map script tag relationships to catalog; returns 500x acceleration metadata."""
+
+
+class DistillScriptToolConfig(FunctionBaseConfig, name="runway_distill_script"):
+    """100k Tag Universe distiller — extract 200-300 canonical story elements from script text."""
+
+
 # ── Input schemas for multi-parameter tools ─────────────────────────────────
 # FunctionInfo.from_fn requires exactly one parameter; use Pydantic models
 # for tools that originally took two arguments.
@@ -157,6 +169,23 @@ class QuadAnalysisQuery(BaseModel):
 class AudienceMetricsQuery(BaseModel):
     market:  str = Field(default="", description="Market name or DMA string, e.g. 'Dallas' or 'Dallas (DMA 4)'")
     segment: str = Field(default="", description="Optional demographic filter, e.g. 'Female' or 'LGBT+'")
+
+
+class TfValidationQuery(BaseModel):
+    title:               str   = Field(description="Content title to validate, e.g. 'Roxanne Lowit Magic Moments'")
+    llm_thematic_score:  float = Field(default=0.0, description="LLM resonance score 0.0–1.0. Pass 0.0 to auto-derive from historical completion rate.")
+    target_network:      str   = Field(default="cbs_broadcast", description="Network key: 'cbs_broadcast', 'nbc_broadcast', 'netflix_streaming', 'hulu_streaming', 'tubi_avod', 'prime_streaming'")
+    demographic:         str   = Field(default="25-34", description="Target age bracket: '18-24', '25-34', '35-49', '50+'")
+
+
+class GraphRelationshipQuery(BaseModel):
+    script_tags: str = Field(description="Comma- or space-separated story tags, e.g. 'empowerment career drama female_led'")
+    top_k:       int = Field(default=10, description="Number of top catalog matches to return (default 10, max 50)")
+
+
+class DistillScriptQuery(BaseModel):
+    script_text: str = Field(description="Script summary, logline, or description to analyse against the 100k tag universe")
+    max_tags:    int = Field(default=250, description="Maximum canonical tags to return (200–300 recommended)")
 
 
 # ── Function registrations ───────────────────────────────────────────────────
@@ -535,5 +564,72 @@ async def _register_retrieval(_config: RetrievalToolConfig, _builder: Builder):
             "covering: 2025 Q4 Audience Report, Cultural Signals Tracker Mar 2026, "
             "and Met Gala 2024 Post-Mortem. "
             "Use this to ground recommendations in historical evidence and cultural signals."
+        ),
+    )
+
+
+@register_function(config_type=TfValidationToolConfig)
+async def _register_tf_validation(_config: TfValidationToolConfig, _builder: Builder):
+    from tools import validate_tf_predictions
+
+    async def fn(query: TfValidationQuery) -> str:
+        return validate_tf_predictions(
+            query.title,
+            query.llm_thematic_score,
+            query.target_network,
+            query.demographic,
+        )
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "Validation Bridge — compares the generative agent's thematic reasoning "
+            "against Vault's TF supervised demographic reach model (tf-demographic-reach-v2). "
+            "Returns confidence_score (0–100), variance_delta (% divergence between LLM "
+            "prediction and TF model), and tf_reach_prediction (e.g. '78% reach on CBS'). "
+            "validation_status is VALIDATED if confidence ≥ 70, else DIVERGENCE_DETECTED. "
+            "Use before finalising any acquisition or scheduling recommendation."
+        ),
+    )
+
+
+@register_function(config_type=GraphRelationshipToolConfig)
+async def _register_graph_relationship(_config: GraphRelationshipToolConfig, _builder: Builder):
+    from tools import map_graph_relationships
+
+    async def fn(query: GraphRelationshipQuery) -> str:
+        return map_graph_relationships(query.script_tags, query.top_k)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "RAPIDS cuGraph relationship mapper — builds a bipartite graph between "
+            "script/story tags and existing catalog titles. "
+            "Returns top_catalog_matches (by edge weight), tag_adjacency_summary, "
+            "and acceleration_metadata: 'Acceleration: 500x (RAPIDS cuGraph) | "
+            "Speed: 12ms (GPU) vs 6000ms (CPU)'. "
+            "GPU path active on Brev L4 (cuGraph); CPU adjacency fallback on local. "
+            "Use when analysing how a new script fits the existing content graph."
+        ),
+    )
+
+
+@register_function(config_type=DistillScriptToolConfig)
+async def _register_distill_script(_config: DistillScriptToolConfig, _builder: Builder):
+    from tools import distill_script_tags
+
+    async def fn(query: DistillScriptQuery) -> str:
+        return distill_script_tags(query.script_text, query.max_tags)
+
+    yield FunctionInfo.from_fn(
+        fn,
+        description=(
+            "100k Tag Universe distiller — extracts 200-300 unique canonical story elements "
+            "from a script summary or logline, mapped back to the Vault Tag Universe v3. "
+            "Each tag has a tag_id (TU-XXXXXX), canonical_tag, category "
+            "(narrative_theme / character_archetype / setting / emotional_beat / "
+            "cultural_signal / genre_marker / demographic_indicator / platform_fit), "
+            "match_confidence, and universe_ref. "
+            "Use this as the first step in any new content acquisition analysis."
         ),
     )

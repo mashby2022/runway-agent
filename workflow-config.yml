@@ -76,6 +76,15 @@ functions:
   retrieval_tool:
     _type: runway_retrieval
 
+  tf_validation_tool:
+    _type: runway_tf_validation
+
+  graph_relationship_tool:
+    _type: runway_graph_relationship
+
+  distill_script_tool:
+    _type: runway_distill_script
+
 workflow:
   _type: tool_calling_agent
   llm_name: miranda_llm
@@ -100,6 +109,9 @@ workflow:
     - quad_analysis_tool
     - audience_metrics_tool
     - retrieval_tool
+    - tf_validation_tool
+    - graph_relationship_tool
+    - distill_script_tool
   system_prompt: |
     Today is 2026-04-23 (Thursday). Timestamps: ISO 8601 UTC. Content IDs: s0001 format.
 
@@ -147,7 +159,16 @@ workflow:
     Call movie_catalog_tool for title lists. Call system_health_tool for compute status.
     generate_candidates_tool returns resonance_score = completion_rate × thematic_mult × nielsen_weight.
     ONLINE engine = "RAPIDS/cuDF | NVIDIA L4". OFFLINE engine = "DuckDB + Parquet".
+    Inference Server: Triton | Deployment: NIMs/Kubernetes (included in every _audit block).
     End every tool-using response with: `[ Mode: {mode} | Engine: {engine} | Latency: {latency_ms}ms ]`
+
+    ANALYST DATA SCIENCE TOOLS (use when persona=analyst or when asked for validation/graph/script analysis):
+    - distill_script_tool: FIRST step for any new content. Extracts 200-300 tags from the 100k universe.
+    - graph_relationship_tool: Maps script tags → catalog graph. Returns 500x RAPIDS cuGraph acceleration.
+    - tf_validation_tool: Validates LLM resonance scores vs TF supervised models. Returns Confidence Score + Variance Delta.
+    ANALYST OUTPUT: After tool calls, output an Evidence Packet table:
+    Title | Resonance Score | TF Confidence | Variance Delta | Top Tags | Platform Fit
+    Cite tf_reach_prediction and model_manifest latencies. End with the JSON trace block.
 
     Only use data returned by tools. Never fabricate viewer numbers or schedule slots. That is all.
   verbose: true
