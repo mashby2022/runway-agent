@@ -842,7 +842,7 @@ def generate_pdf_brief(params: dict[str, Any]) -> dict[str, Any]:
         out = _REPORTS_DIR / f"{filename}.pdf"
         _WP(string=html, base_url=str(_REPORTS_DIR)).write_pdf(str(out))
         method = "weasyprint"
-    except ImportError:
+    except (ImportError, OSError, Exception):
         out = _REPORTS_DIR / f"{filename}.html"
         out.write_text(html, encoding="utf-8")
         method = "html_fallback"

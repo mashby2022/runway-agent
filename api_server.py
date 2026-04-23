@@ -33,7 +33,7 @@ import httpx
 import pandas as pd
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -105,6 +105,30 @@ class ChatRequest(BaseModel):
     messages: list[dict]
     reset_history: bool = False
     stream: bool = True
+
+
+class BriefRequest(BaseModel):
+    title:                    str   = "Untitled"
+    persona:                  str   = "executive"
+    strategic_recommendation: str   = "Greenlight Priority: High"
+    executive_summary:        str   = ""
+    resonance_score:          float = 0.87
+    completion_rate:          float = 0.81
+    platform:                 str   = "Streaming"
+    thematic_alignment:       float = 88.0
+    confidence_score:         float = 82.4
+    variance_delta:           str   = "8.3%"
+    tf_reach_prediction:      str   = ""
+    target_network:           str   = "CBS"
+    target_demographic:       str   = "35-45"
+    validation_status:        str   = "VALIDATED"
+    thematic_signal:          str   = ""
+    faiss_insight:            str   = ""
+    script_tags:              str   = ""
+    graph_data:               str   = ""
+    latency_ms:               int   = 340
+    engine:                   str   = "RAPIDS/cuDF | NVIDIA L4"
+    mode:                     str   = "ONLINE"
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -2038,7 +2062,9 @@ def api_config(request: Request):
             "apply_queue":     f"{public_url}/api/apply-queue",
             "chat_bypass":     f"{public_url}/api/chat",
             "stop":            f"{public_url}/api/chat/stop",
-            "download_report": f"{public_url}/download_report",
+            "download_report":  f"{public_url}/download_report",
+            "generate_brief":   f"{public_url}/api/generate-brief",
+            "download_brief":   f"{public_url}/api/briefs/{{filename}}",
         },
     }
 
@@ -2213,6 +2239,78 @@ def download_report(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+# ── Miranda Intelligence Brief ─────────────────────────────────────────────────
+
+_REPORTS_DIR = os.path.join(os.path.dirname(__file__), "data", "reports")
+os.makedirs(_REPORTS_DIR, exist_ok=True)
+
+
+@app.post("/api/generate-brief")
+async def api_generate_brief(body: BriefRequest, request: Request):
+    """Generate a branded Miranda Intelligence Brief PDF (or HTML fallback).
+
+    Call after the 4-step pipeline has run. Pass whatever scores the frontend
+    has collected (resonance_score, confidence_score, script_tags, etc.).
+    Returns JSON with filename and a download_url the frontend can follow.
+    """
+    from pdf_generator import generate_pdf_brief
+
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        # Prefer ngrok tunnel URL if available (needed for Lovable cross-origin download)
+        try:
+            import httpx as _hx
+            tunnels = _hx.get("http://localhost:4040/api/tunnels", timeout=1.0).json()
+            for t in tunnels.get("tunnels", []):
+                if "8081" in t.get("config", {}).get("addr", ""):
+                    base_url = t["public_url"].rstrip("/")
+                    break
+        except Exception:
+            pass
+
+        result = generate_pdf_brief(body.model_dump())
+        filename = result["filename"]
+
+        return JSONResponse({
+            "status":        result["status"],
+            "filename":      filename,
+            "download_url":  f"{base_url}/api/briefs/{filename}",
+            "persona":       result["persona"],
+            "page_count":    result["page_count"],
+            "render_method": result["render_method"],
+            "title":         result["title"],
+            "_audit":        result["_audit"],
+        })
+    except Exception as exc:
+        logger.error("Brief generation error: %s: %s", type(exc).__name__, exc)
+        return JSONResponse({"status": "ERROR", "detail": str(exc)}, status_code=500)
+
+
+@app.get("/api/briefs/{filename}")
+def api_download_brief(filename: str):
+    """Serve a generated Miranda Intelligence Brief for download.
+
+    Supports both .pdf (WeasyPrint) and .html (fallback) files.
+    """
+    safe = os.path.basename(filename)  # prevent path traversal
+    path = os.path.join(_REPORTS_DIR, safe)
+
+    if not os.path.exists(path):
+        return JSONResponse({"detail": "Brief not found."}, status_code=404)
+
+    if safe.endswith(".pdf"):
+        media_type = "application/pdf"
+    else:
+        media_type = "text/html"
+
+    return FileResponse(
+        path=path,
+        media_type=media_type,
+        filename=safe,
+        headers={"Content-Disposition": f"attachment; filename=\"{safe}\""},
     )
 
 
